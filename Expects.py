@@ -1,6 +1,6 @@
+from typing import List, Optional, Dict, Mapping
 import os
 import json
-from typing import List
 
 class Expects:
 
@@ -9,25 +9,25 @@ class Expects:
 
     def __init__(self):
         self.ROBOT_LIBRARY_LISTENER = self
-        self.filename = None
-        self.expectations = {}
+        self.filename:str
+        self.expectations:Dict[str, object] = {}
         self._position:List[str] = []
-        self._row_index = 0
+        self._row_index:int = 0
 
-    def _start_test(self, name, attributes):
-        self._position.append(attributes["longname"])
+    def _start_test(self, name:str, attrs:Mapping[str, str]):
+        self._position.append(attrs["longname"])
 
-    def _end_test(self, name, attributes):
+    def _end_test(self, name:str, attributes):
         self._position = self._position[:-1] if len(self._position) > 1 else [attributes["longname"][:-len(name)-1]]
 
-    def _start_keyword(self, name, attributes):
+    def _start_keyword(self, name:str, attrs:Mapping[str, str]):
         if not(self._position):
             self._position = ['0', '0.' + str(self._row_index)]
         else:
             self._position.append(self._position[-1] + "." + str(self._row_index))
         self._row_index = 0
 
-    def _end_keyword(self, name, attributes):
+    def _end_keyword(self, name:str, attrs:Mapping[str, str]):
         if not(self._position):
             self._row_index = 1
             self._position = ['0']
@@ -37,19 +37,19 @@ class Expects:
         self._row_index += 1
         self._position = self._position[:-1] if len(self._position) > 1 else [str(int(splitted[0])+1)]
 
-    def _start_suite(self, name, attrs):
+    def _start_suite(self, name:str, attrs:Mapping[str, str]):
         filename, _ = os.path.splitext(attrs['source'])
         self.filename = filename + ".json"
         if os.path.isfile(self.filename):
             with open(self.filename, "r") as f:
                 self.expectations = json.load(f)
 
-    def _end_suite(self, name, attrs):
+    def _end_suite(self, name:str, attrs:Mapping[str, str]):
         if not os.path.isfile(self.filename):
             with open(self.filename, "w") as f:
                 json.dump(self.expectations, f, indent=4)
 
-    def should_be_as_expected(self, value):
+    def should_be_as_expected(self, value:object):
         if not os.path.isfile(self.filename):
             print(f"Recording expected value {value}")
             self.expectations[self._position[-1]] = value
