@@ -8,12 +8,13 @@ class Expects:
     ROBOT_LIBRARY_SCOPE = 'TEST SUITE'
     ROBOT_LISTENER_API_VERSION = 2
 
-    def __init__(self):
+    def __init__(self, interactive:bool=False):
         self.ROBOT_LIBRARY_LISTENER = self
         self.filename:str
         self.expectations:Dict[str, object] = {}
         self._position:List[str] = []
         self._row_index:int = 0
+        self._interactive = interactive
 
     def _start_test(self, name:str, attrs:Mapping[str, str]):
         self._position.append(attrs["longname"])
@@ -55,10 +56,14 @@ class Expects:
             self.expectations[self._position[-1]] = value
         else:
             logger.info(f"Validating that value {value} matches expectation")
-            if value != self.expectations[self._position[-1]]:
-                logger.console(f"\nExecution paused on row {self._position[-1]}")
-                logger.console(f"Validation failed replace '{self.expectations[self._position[-1]]}' with new value '{value}'? [y/n]?")
-                replace = input()
-                if replace == 'y':
-                    logger.info(f"Recording expected value {value}")
-                    self.expectations[self._position[-1]] = value
+            expected = self.expectations[self._position[-1]]
+            if value != expected:
+                if self._interactive:
+                    logger.console(f"\nExecution paused on row {self._position[-1]}")
+                    logger.console(f"Validation failed replace '{expected}' with new value '{value}'? [y/n]?")
+                    replace = input()
+                    if replace == 'y':
+                        logger.info(f"Recording expected value {value}")
+                        self.expectations[self._position[-1]] = value
+                else:
+                    raise AssertionError(f"Unexpected value {value}. Expected {expected}.")
