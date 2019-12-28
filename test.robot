@@ -5,7 +5,7 @@ Library  Expects.py
 Test 1
    Should be as expected   foo
    Should be as expected   ${1}
-   Should be as expected   ${EMPTY}
+   Should be as expected   ${null}
    FOR    ${index}    IN RANGE    42
         Should be as expected    ${index}
         Log  hello
