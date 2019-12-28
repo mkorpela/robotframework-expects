@@ -1,7 +1,7 @@
 from typing import List, Optional, Dict, Mapping
 import os
 import json
-from robot.api import logger
+from robot.api import logger # type: ignore
 
 class Expects:
 
