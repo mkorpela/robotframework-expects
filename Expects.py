@@ -11,10 +11,11 @@ class Expects:
     def __init__(self, interactive:bool=False):
         self.ROBOT_LIBRARY_LISTENER = self
         self.filename:str
-        self.expectations:Dict[str, object] = {}
+        self.expectations:List[Dict[str, object]] = []
         self._position:List[str] = []
         self._row_index:int = 0
         self._interactive = interactive
+        self._expectation_index = 0
 
     def _start_test(self, name:str, attrs:Mapping[str, str]):
         self._position.append(attrs["longname"])
@@ -41,22 +42,22 @@ class Expects:
 
     def _start_suite(self, name:str, attrs:Mapping[str, str]):
         filename, _ = os.path.splitext(attrs['source'])
-        self.filename = filename + ".json"
+        self.filename = filename + "_expects.json"
         if os.path.isfile(self.filename):
             with open(self.filename, "r") as f:
                 self.expectations = json.load(f)
 
     def _end_suite(self, name:str, attrs:Mapping[str, str]):
         with open(self.filename, "w") as f:
-            json.dump(self.expectations, f, indent=4)
+            json.dump(self.expectations, f, indent=2, sort_keys=True)
 
     def should_be_as_expected(self, value:object):
         if not os.path.isfile(self.filename):
             logger.info(f"Recording expected value {value}")
-            self.expectations[self._position[-1]] = value
+            self.expectations.append({'value':value, 'id':self._position[-1]})
         else:
             logger.info(f"Validating that value {value} matches expectation")
-            expected = self.expectations[self._position[-1]]
+            expected = self.expectations[self._expectation_index]['value']
             if value != expected:
                 if self._interactive:
                     logger.console(f"\nExecution paused on row {self._position[-1]}")
@@ -64,6 +65,7 @@ class Expects:
                     replace = input()
                     if replace == 'y':
                         logger.info(f"Recording expected value {value}")
-                        self.expectations[self._position[-1]] = value
+                        self.expectations[self._expectation_index] = {'value':value, 'id':self._position[-1]}
                 else:
                     raise AssertionError(f"Unexpected value {value}. Expected {expected}.")
+        self._expectation_index += 1
