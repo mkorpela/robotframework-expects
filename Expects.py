@@ -53,8 +53,8 @@ class Expects:
 
     def should_be_as_expected(self, value:object, id:Optional[str]=None):
         expectation_id:str = id if id else self._position[-1]
-        if not os.path.isfile(self.filename):
-            logger.info(f"Recording expected value {value}")
+        if not os.path.isfile(self.filename) or len(self.expectations) >= self._expectation_index:
+            logger.info(f"Recording expected value '{value}' for id '{expectation_id}")
             self.expectations.append({'value':value, 'id':expectation_id})
         else:
             logger.debug(f"Validating that value '{value}' matches expectation")
