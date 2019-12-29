@@ -15,12 +15,13 @@ class Expects:
     def __init__(self, interactive:bool=False) -> None:
         self.ROBOT_LIBRARY_LISTENER = self
         self.filename:str
-        self.expectations:Dict[str, List[Dict[str, object]]] = {}
+        self.expectations:Dict[str, Dict[str, List[Dict[str, object]]]] = {"Tests":{}, "Keywords":{}}
         self._position:List[str] = []
         self._row_index:int = 0
         self._interactive = interactive
         self._expectation_index = 0
         self._current_test:str = "UNKNOWN"
+        self._current_keyword:str = "UNKNOWN"
 
     def _start_test(self, name:str, attrs:Mapping[str, str]) -> None:
         self._position.append(attrs["longname"])
@@ -32,6 +33,8 @@ class Expects:
         self._current_test = "UNKNOWN"
 
     def _start_keyword(self, name:str, attrs:Mapping[str, str]) -> None:
+        if attrs['libname'] == '' and attrs['type'] == 'Keyword':
+            self._current_keyword = name
         if not(self._position):
             self._position = ['0', '0.' + str(self._row_index)]
         else:
@@ -39,6 +42,8 @@ class Expects:
         self._row_index = 0
 
     def _end_keyword(self, name:str, attrs:Mapping[str, str]) -> None:
+        if attrs['libname'] == '':
+            self._current_keyword = "UNKNOWN"
         if not(self._position):
             self._row_index = 1
             self._position = ['0']
@@ -67,9 +72,13 @@ class Expects:
             return False
 
     def _store_new_expected_value(self, value:object, expectation_id:str) -> None:
+        if self._current_keyword == "UNKNOWN":
+            expectations = self.expectations["Tests"][self._current_test]
+        else:
+            expectations = self.expectations["Keywords"][self._current_keyword]
         if self._is_jsonable(value):
             logger.console(f"Recording expected value '{value}' for id '{expectation_id}")
-            self.expectations[self._current_test].append({'value':value, 'id':expectation_id})
+            expectations.append({'value':value, 'id':expectation_id})
         else:
             logger.console(f"\nGiven object '{value}' is of type '{type(value)}' and can not be stored")
             logger.console(f"Would you like to explore possible fields for validateable data in '{value}' [y/n]?")
@@ -92,7 +101,7 @@ class Expects:
                         raise AssertionError("Could not expect this")
                     for f in selected_fields:
                         logger.console(f"Recording expected value for field '{f}' for id '{expectation_id}'")
-                    self.expectations[self._current_test].append({'fields':selected_fields, 'id':expectation_id})
+                    expectations.append({'fields':selected_fields, 'id':expectation_id})
 
     def _report_unexpected(self, actual:object, expected:object) -> str:
         if isinstance(actual, str) and isinstance(expected, str):
@@ -112,7 +121,11 @@ class Expects:
                 replace = input()
                 if replace == 'y':
                     logger.info(f"Recording expected value {value}")
-                    self.expectations[self._current_test][self._expectation_index] = {'value':value, 'id':expectation_id}
+                    if self._current_keyword == "UNKNOWN":
+                        expectations = self.expectations["Tests"][self._current_test]
+                    else:
+                        expectations = self.expectations["Keywords"][self._current_keyword]
+                    expectations[self._expectation_index] = {'value':value, 'id':expectation_id}
             else:
                 raise AssertionError(self._report_unexpected(value, expected))
         else:
@@ -136,14 +149,14 @@ class Expects:
     def _validate_min(self, value:object, expected:float, expectation_id:str) -> None:
         if not isinstance(value, Number):
             raise AssertionError(f"Value {value} is not of numeric type")
-        if value < expected:
+        if cast(float, value) < expected:
             raise AssertionError(f"Value {value} is smaller than {expected}")
         logger.info(f"Value is bigger than minimum expected")
 
     def _validate_max(self, value:object, expected:float, expectation_id:str) -> None:
         if not isinstance(value, Number):
             raise AssertionError(f"Value {value} is not of numeric type")
-        if value > expected:
+        if cast(float, value) > expected:
             raise AssertionError(f"Value {value} is bigger than {expected}")
         logger.info(f"Value is smaller than maximum expected")
 
@@ -178,9 +191,15 @@ class Expects:
 
     def should_be_as_expected(self, value:object, id:Optional[str]=None) -> None:
         expectation_id:str = id if id else self._position[-1]
-        if self._current_test not in self.expectations:
-            self.expectations[self._current_test] = []
-        current_expectations = self.expectations[self._current_test]
+        if self._current_keyword == "UNKNOWN":
+            expectations = self.expectations["Tests"]
+            if self._current_test not in expectations:
+                expectations[self._current_test] = []
+        else:
+            expectations = self.expectations["Keywords"]
+            if self._current_keyword not in expectations:
+                expectations[self._current_keyword] = []
+        current_expectations = expectations[self._current_keyword if self._current_keyword != "UNKNOWN" else self._current_test]
         self._expectation_index += 1
         expected = self._find_expected(expectation_id, current_expectations)
         if expected is None:
