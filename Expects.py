@@ -51,21 +51,27 @@ class Expects:
         with open(self.filename, "w") as f:
             json.dump(self.expectations, f, indent=2, sort_keys=True)
 
-    def should_be_as_expected(self, value:object):
+    def should_be_as_expected(self, value:object, id:Optional[str]=None):
+        expectation_id:str = id if id else self._position[-1]
         if not os.path.isfile(self.filename):
             logger.info(f"Recording expected value {value}")
-            self.expectations.append({'value':value, 'id':self._position[-1]})
+            self.expectations.append({'value':value, 'id':expectation_id})
         else:
-            logger.info(f"Validating that value {value} matches expectation")
-            expected = self.expectations[self._expectation_index]['value']
-            if value != expected:
+            logger.debug(f"Validating that value '{value}' matches expectation")
+            expected = self.expectations[self._expectation_index]
+            if value != expected['value']:
                 if self._interactive:
-                    logger.console(f"\nExecution paused on row {self._position[-1]}")
-                    logger.console(f"Validation failed replace '{expected}' with new value '{value}'? [y/n]?")
+                    logger.console(f"\nExecution paused on row with id '{expectation_id}'")
+                    logger.console(f"Validation failed replace '{expected['value']}' with new value '{value}'? [y/n]?")
                     replace = input()
                     if replace == 'y':
                         logger.info(f"Recording expected value {value}")
-                        self.expectations[self._expectation_index] = {'value':value, 'id':self._position[-1]}
+                        self.expectations[self._expectation_index] = {'value':value, 'id':expectation_id}
                 else:
-                    raise AssertionError(f"Unexpected value {value}. Expected {expected}.")
+                    raise AssertionError(f"Unexpected value '{value}'. Expected '{expected['value']}'.")
+            else:
+                logger.info(f"Value '{value}' is as expected")
+            if expected['id'] != expectation_id:
+                logger.debug(f"Expectation id mismatch. Expected '{expected['id']}' and was '{expectation_id}'. Updating expectation id.")
+                self.expectations[self._expectation_index]['id'] = expectation_id
         self._expectation_index += 1
