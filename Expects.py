@@ -14,17 +14,21 @@ class Expects:
     def __init__(self, interactive:bool=False) -> None:
         self.ROBOT_LIBRARY_LISTENER = self
         self.filename:str
-        self.expectations:List[Dict[str, object]] = []
+        self.expectations:Dict[str, List[Dict[str, object]]] = {}
         self._position:List[str] = []
         self._row_index:int = 0
         self._interactive = interactive
         self._expectation_index = 0
+        self._current_test:str = "UNKNOWN"
 
     def _start_test(self, name:str, attrs:Mapping[str, str]) -> None:
         self._position.append(attrs["longname"])
+        self._current_test = name
+        self._expectation_index = 0
 
     def _end_test(self, name:str, attributes) -> None:
         self._position = self._position[:-1] if len(self._position) > 1 else [attributes["longname"][:-len(name)-1]]
+        self._current_test = "UNKNOWN"
 
     def _start_keyword(self, name:str, attrs:Mapping[str, str]) -> None:
         if not(self._position):
@@ -62,9 +66,11 @@ class Expects:
             return False
 
     def _store_new_expected_value(self, value:object, expectation_id:str) -> None:
+        if self._current_test not in self.expectations:
+            self.expectations[self._current_test] = []
         if self._is_jsonable(value):
             logger.console(f"Recording expected value '{value}' for id '{expectation_id}")
-            self.expectations.append({'value':value, 'id':expectation_id})
+            self.expectations[self._current_test].append({'value':value, 'id':expectation_id})
         else:
             logger.console(f"\nGiven object '{value}' is of type '{type(value)}' and can not be stored")
             logger.console(f"Would you like to explore possible fields for validateable data in '{value}' [y/n]?")
@@ -87,7 +93,7 @@ class Expects:
                         raise AssertionError("Could not expect this")
                     for f in selected_fields:
                         logger.console(f"Recording expected value for field '{f}' for id '{expectation_id}'")
-                    self.expectations.append({'fields':selected_fields, 'id':expectation_id})
+                    self.expectations[self._current_test].append({'fields':selected_fields, 'id':expectation_id})
 
     def _report_unexpected(self, actual:object, expected:object) -> str:
         if isinstance(actual, str) and isinstance(expected, str):
@@ -107,7 +113,7 @@ class Expects:
                 replace = input()
                 if replace == 'y':
                     logger.info(f"Recording expected value {value}")
-                    self.expectations[self._expectation_index] = {'value':value, 'id':expectation_id}
+                    self.expectations[self._current_test][self._expectation_index] = {'value':value, 'id':expectation_id}
             else:
                 raise AssertionError(self._report_unexpected(value, expected))
         else:
@@ -148,12 +154,12 @@ class Expects:
     def should_be_as_expected(self, value:object, id:Optional[str]=None) -> None:
         expectation_id:str = id if id else self._position[-1]
         self._expectation_index += 1
-        if not os.path.isfile(self.filename) or len(self.expectations) < self._expectation_index:
+        if not os.path.isfile(self.filename) or len(self.expectations[self._current_test]) < self._expectation_index:
             self._store_new_expected_value(value, expectation_id)
         else:
             logger.debug(f"Validating that value '{value}' matches expectation")
-            expected = self.expectations[self._expectation_index-1]
+            expected = self.expectations[self._current_test][self._expectation_index-1]
             self._validate(value, expected, expectation_id)
             if expected['id'] != expectation_id:
                 logger.debug(f"Expectation id mismatch. Expected '{expected['id']}' and was '{expectation_id}'. Updating expectation id.")
-                self.expectations[self._expectation_index-1]['id'] = expectation_id
+                self.expectations[self._current_test][self._expectation_index-1]['id'] = expectation_id

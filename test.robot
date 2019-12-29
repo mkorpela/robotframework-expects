@@ -9,7 +9,7 @@ Test 1
    Log   Hello World
    Should be as expected   ${null}
    FOR    ${index}    IN RANGE    42
-        Should be as expected    ${index}
+        Should be as expected    ${index}   id=myIndexExpectation
         Log  hello
         Should be as expected    ${2*${index}-3}
    END
