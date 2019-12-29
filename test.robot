@@ -1,5 +1,6 @@
 *** Settings ***
 Library  Expects.py
+Library  RequestsLibrary
 
 *** Test Cases ***
 Test 1
@@ -17,6 +18,10 @@ Test 2
   Keyword call   bar
   Keyword call   bar
 
+Test 3
+  Create Session  google  http://www.google.com
+  ${resp}=	Get Request	google  /
+  Should be as expected  ${resp}
 
 *** Keywords ***
 Keyword call
