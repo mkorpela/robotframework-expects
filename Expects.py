@@ -4,6 +4,7 @@ import re
 import json
 import inspect
 import difflib
+from numbers import Number
 from robot.api import logger # type: ignore
 
 class Expects:
@@ -66,8 +67,6 @@ class Expects:
             return False
 
     def _store_new_expected_value(self, value:object, expectation_id:str) -> None:
-        if self._current_test not in self.expectations:
-            self.expectations[self._current_test] = []
         if self._is_jsonable(value):
             logger.console(f"Recording expected value '{value}' for id '{expectation_id}")
             self.expectations[self._current_test].append({'value':value, 'id':expectation_id})
@@ -134,6 +133,20 @@ class Expects:
             raise AssertionError(f"Value '{value}' does not match")
         logger.info(f"Value matches expected")
 
+    def _validate_min(self, value:object, expected:float, expectation_id:str) -> None:
+        if not isinstance(value, Number):
+            raise AssertionError(f"Value {value} is not of numeric type")
+        if value < expected:
+            raise AssertionError(f"Value {value} is smaller than {expected}")
+        logger.info(f"Value is bigger than minimum expected")
+
+    def _validate_max(self, value:object, expected:float, expectation_id:str) -> None:
+        if not isinstance(value, Number):
+            raise AssertionError(f"Value {value} is not of numeric type")
+        if value > expected:
+            raise AssertionError(f"Value {value} is bigger than {expected}")
+        logger.info(f"Value is smaller than maximum expected")
+
     def _validate_fields(self, value:object, fields:Dict[str, Dict[str, object]], expectation_id:str) -> None:
         logger.info("Checking object")
         for field, val in inspect.getmembers(value):
@@ -150,22 +163,30 @@ class Expects:
             self._validate_startswith(value, cast(str, expected['startswith']), expectation_id)
         if 'regex' in expected:
             self._validate_regex(value, cast(str, expected['regex']), expectation_id)
+        if 'min' in expected:
+            self._validate_min(value, cast(float, expected['min']), expectation_id)
+        if 'max' in expected:
+            self._validate_max(value, cast(float, expected['max']), expectation_id)
 
-    def _find_expected(self, expectation_id:str, current_expectations:List[Dict[str, object]]) -> Dict[str, object]:
+    def _find_expected(self, expectation_id:str, current_expectations:List[Dict[str, object]]) -> Optional[Dict[str, object]]:
         for exp in current_expectations:
             if exp['id'] == expectation_id:
                 return exp
+        if len(current_expectations) < self._expectation_index:
+            return None
         return current_expectations[self._expectation_index-1]
 
     def should_be_as_expected(self, value:object, id:Optional[str]=None) -> None:
         expectation_id:str = id if id else self._position[-1]
+        if self._current_test not in self.expectations:
+            self.expectations[self._current_test] = []
         current_expectations = self.expectations[self._current_test]
         self._expectation_index += 1
-        if not os.path.isfile(self.filename) or len(current_expectations) < self._expectation_index:
+        expected = self._find_expected(expectation_id, current_expectations)
+        if expected is None:
             self._store_new_expected_value(value, expectation_id)
         else:
             logger.debug(f"Validating that value '{value}' matches expectation")
-            expected = self._find_expected(expectation_id, current_expectations)
             self._validate(value, expected, expectation_id)
             if expected['id'] != expectation_id:
                 logger.debug(f"Expectation id mismatch. Expected '{expected['id']}' and was '{expectation_id}'. Updating expectation id.")

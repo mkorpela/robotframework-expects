@@ -14,46 +14,27 @@
     },
     {
       "id": "myIndexExpectation",
-      "value": 0
+      "max": 42,
+      "min": 0
     },
     {
       "id": "Test.Test 1.4.0.2",
       "value": -3
     },
     {
-      "id": "myIndexExpectation",
-      "value": 1
-    },
-    {
       "id": "Test.Test 1.4.1.2",
       "value": -1
-    },
-    {
-      "id": "myIndexExpectation",
-      "value": 2
     },
     {
       "id": "Test.Test 1.4.2.2",
       "value": 1
     },
     {
-      "id": "myIndexExpectation",
-      "value": 3
-    },
-    {
       "id": "Test.Test 1.4.3.2",
       "value": 3
     },
     {
-      "id": "myIndexExpectation",
-      "value": 4
-    },
-    {
       "id": "Test.Test 1.4.4.2",
-      "value": 5
-    },
-    {
-      "id": "myIndexExpectation",
       "value": 5
     },
     {
@@ -61,288 +42,144 @@
       "value": 7
     },
     {
-      "id": "myIndexExpectation",
-      "value": 6
-    },
-    {
       "id": "Test.Test 1.4.6.2",
       "value": 9
-    },
-    {
-      "id": "myIndexExpectation",
-      "value": 7
     },
     {
       "id": "Test.Test 1.4.7.2",
       "value": 11
     },
     {
-      "id": "myIndexExpectation",
-      "value": 8
-    },
-    {
       "id": "Test.Test 1.4.8.2",
       "value": 13
-    },
-    {
-      "id": "myIndexExpectation",
-      "value": 9
     },
     {
       "id": "Test.Test 1.4.9.2",
       "value": 15
     },
     {
-      "id": "myIndexExpectation",
-      "value": 10
-    },
-    {
       "id": "Test.Test 1.4.10.2",
       "value": 17
-    },
-    {
-      "id": "myIndexExpectation",
-      "value": 11
     },
     {
       "id": "Test.Test 1.4.11.2",
       "value": 19
     },
     {
-      "id": "myIndexExpectation",
-      "value": 12
-    },
-    {
       "id": "Test.Test 1.4.12.2",
       "value": 21
-    },
-    {
-      "id": "myIndexExpectation",
-      "value": 13
     },
     {
       "id": "Test.Test 1.4.13.2",
       "value": 23
     },
     {
-      "id": "myIndexExpectation",
-      "value": 14
-    },
-    {
       "id": "Test.Test 1.4.14.2",
       "value": 25
-    },
-    {
-      "id": "myIndexExpectation",
-      "value": 15
     },
     {
       "id": "Test.Test 1.4.15.2",
       "value": 27
     },
     {
-      "id": "myIndexExpectation",
-      "value": 16
-    },
-    {
       "id": "Test.Test 1.4.16.2",
       "value": 29
-    },
-    {
-      "id": "myIndexExpectation",
-      "value": 17
     },
     {
       "id": "Test.Test 1.4.17.2",
       "value": 31
     },
     {
-      "id": "myIndexExpectation",
-      "value": 18
-    },
-    {
       "id": "Test.Test 1.4.18.2",
       "value": 33
-    },
-    {
-      "id": "myIndexExpectation",
-      "value": 19
     },
     {
       "id": "Test.Test 1.4.19.2",
       "value": 35
     },
     {
-      "id": "myIndexExpectation",
-      "value": 20
-    },
-    {
       "id": "Test.Test 1.4.20.2",
       "value": 37
-    },
-    {
-      "id": "myIndexExpectation",
-      "value": 21
     },
     {
       "id": "Test.Test 1.4.21.2",
       "value": 39
     },
     {
-      "id": "myIndexExpectation",
-      "value": 22
-    },
-    {
       "id": "Test.Test 1.4.22.2",
       "value": 41
-    },
-    {
-      "id": "myIndexExpectation",
-      "value": 23
     },
     {
       "id": "Test.Test 1.4.23.2",
       "value": 43
     },
     {
-      "id": "myIndexExpectation",
-      "value": 24
-    },
-    {
       "id": "Test.Test 1.4.24.2",
       "value": 45
-    },
-    {
-      "id": "myIndexExpectation",
-      "value": 25
     },
     {
       "id": "Test.Test 1.4.25.2",
       "value": 47
     },
     {
-      "id": "myIndexExpectation",
-      "value": 26
-    },
-    {
       "id": "Test.Test 1.4.26.2",
       "value": 49
-    },
-    {
-      "id": "myIndexExpectation",
-      "value": 27
     },
     {
       "id": "Test.Test 1.4.27.2",
       "value": 51
     },
     {
-      "id": "myIndexExpectation",
-      "value": 28
-    },
-    {
       "id": "Test.Test 1.4.28.2",
       "value": 53
-    },
-    {
-      "id": "myIndexExpectation",
-      "value": 29
     },
     {
       "id": "Test.Test 1.4.29.2",
       "value": 55
     },
     {
-      "id": "myIndexExpectation",
-      "value": 30
-    },
-    {
       "id": "Test.Test 1.4.30.2",
       "value": 57
-    },
-    {
-      "id": "myIndexExpectation",
-      "value": 31
     },
     {
       "id": "Test.Test 1.4.31.2",
       "value": 59
     },
     {
-      "id": "myIndexExpectation",
-      "value": 32
-    },
-    {
       "id": "Test.Test 1.4.32.2",
       "value": 61
-    },
-    {
-      "id": "myIndexExpectation",
-      "value": 33
     },
     {
       "id": "Test.Test 1.4.33.2",
       "value": 63
     },
     {
-      "id": "myIndexExpectation",
-      "value": 34
-    },
-    {
       "id": "Test.Test 1.4.34.2",
       "value": 65
-    },
-    {
-      "id": "myIndexExpectation",
-      "value": 35
     },
     {
       "id": "Test.Test 1.4.35.2",
       "value": 67
     },
     {
-      "id": "myIndexExpectation",
-      "value": 36
-    },
-    {
       "id": "Test.Test 1.4.36.2",
       "value": 69
-    },
-    {
-      "id": "myIndexExpectation",
-      "value": 37
     },
     {
       "id": "Test.Test 1.4.37.2",
       "value": 71
     },
     {
-      "id": "myIndexExpectation",
-      "value": 38
-    },
-    {
       "id": "Test.Test 1.4.38.2",
       "value": 73
-    },
-    {
-      "id": "myIndexExpectation",
-      "value": 39
     },
     {
       "id": "Test.Test 1.4.39.2",
       "value": 75
     },
     {
-      "id": "myIndexExpectation",
-      "value": 40
-    },
-    {
       "id": "Test.Test 1.4.40.2",
       "value": 77
-    },
-    {
-      "id": "myIndexExpectation",
-      "value": 41
     },
     {
       "id": "Test.Test 1.4.41.2",
@@ -366,7 +203,7 @@
           "value": 200
         },
         "text": {
-          "startwith": "<!doctype html><html itemscope=\"\" itemtype=\"http://schema.org/WebPage\" lang=\"fi\"><head><meta content=\"text/html; charset=UTF-8\" http-equiv=\"Content-Type\"><meta content=\"/images/branding/googleg/1x/googleg_standard_color_128dp.png\" itemprop=\"image\"><title>Google</title>"
+          "startswith": "<!doctype html><html itemscope=\"\" itemtype=\"http://schema.org/WebPage\" lang=\"fi\"><head><meta content=\"text/html; charset=UTF-8\" http-equiv=\"Content-Type\"><meta content=\"/images/branding/googleg/1x/googleg_standard_color_128dp.png\" itemprop=\"image\"><title>Google</title>"
         }
       },
       "id": "Test.Test 3.9"
