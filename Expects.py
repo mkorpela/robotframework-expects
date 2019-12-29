@@ -151,15 +151,22 @@ class Expects:
         if 'regex' in expected:
             self._validate_regex(value, cast(str, expected['regex']), expectation_id)
 
+    def _find_expected(self, expectation_id:str, current_expectations:List[Dict[str, object]]) -> Dict[str, object]:
+        for exp in current_expectations:
+            if exp['id'] == expectation_id:
+                return exp
+        return current_expectations[self._expectation_index-1]
+
     def should_be_as_expected(self, value:object, id:Optional[str]=None) -> None:
         expectation_id:str = id if id else self._position[-1]
+        current_expectations = self.expectations[self._current_test]
         self._expectation_index += 1
-        if not os.path.isfile(self.filename) or len(self.expectations[self._current_test]) < self._expectation_index:
+        if not os.path.isfile(self.filename) or len(current_expectations) < self._expectation_index:
             self._store_new_expected_value(value, expectation_id)
         else:
             logger.debug(f"Validating that value '{value}' matches expectation")
-            expected = self.expectations[self._current_test][self._expectation_index-1]
+            expected = self._find_expected(expectation_id, current_expectations)
             self._validate(value, expected, expectation_id)
             if expected['id'] != expectation_id:
                 logger.debug(f"Expectation id mismatch. Expected '{expected['id']}' and was '{expectation_id}'. Updating expectation id.")
-                self.expectations[self._current_test][self._expectation_index-1]['id'] = expectation_id
+                expected['id'] = expectation_id
