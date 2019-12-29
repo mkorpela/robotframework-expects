@@ -73,7 +73,7 @@ class Expects:
                 for field, val in inspect.getmembers(value):
                     if not field.startswith('_') and self._is_jsonable(val):
                         logger.console(f"{len(fields)+1}. Field '{field}' has a storable value")
-                        fields.append((field, val))
+                        fields.append((field, {'value':val}))
                 if not fields:
                     logger.console(f"No storable fields found", stream='stderr')
                     raise AssertionError("Could not expect this")
@@ -90,8 +90,12 @@ class Expects:
 
     def _report_unexpected(self, actual:object, expected:object) -> str:
         if isinstance(actual, str) and isinstance(expected, str):
-            diff = difflib.ndiff(actual.splitlines(keepends=True), expected.splitlines(keepends=True))
-            return "Strings differ:\n"+'\n'.join(diff)
+            index = 0
+            for i in (i for i, (a, e) in enumerate(zip(actual, expected)) if a != e):
+                index = i
+                break
+            diff = "\n".join(difflib.ndiff(actual.splitlines(keepends=True), expected.splitlines(keepends=True)))
+            return f"Strings differ after {index} characters:\n{diff}"
         return f"Unexpected {actual}. Expected it to be {expected}"
 
     def _validate_value(self, value:object, expected:object, expectation_id:str) -> None:
@@ -112,9 +116,14 @@ class Expects:
         logger.info("Checking object")
         for field, val in inspect.getmembers(value):
             if field in fields:
-                if val != fields[field]:
-                    raise AssertionError(f"On field '{field}': {self._report_unexpected(val, fields[field])}")
+                self._validate(val, fields[field], expectation_id)
                 logger.info(f"Field '{field}' is as expected")
+
+    def _validate(self, value:object, expected:Dict[str, object], expectation_id:str) -> None:
+        if 'value' in expected:
+            self._validate_value(value, expected['value'], expectation_id)
+        if 'fields' in expected:
+            self._validate_fields(value, expected['fields'], expectation_id)
 
     def should_be_as_expected(self, value:object, id:Optional[str]=None) -> None:
         expectation_id:str = id if id else self._position[-1]
@@ -123,10 +132,7 @@ class Expects:
         else:
             logger.debug(f"Validating that value '{value}' matches expectation")
             expected = self.expectations[self._expectation_index]
-            if 'value' in expected:
-                self._validate_value(value, expected['value'], expectation_id)
-            if 'fields' in expected:
-                self._validate_fields(value, expected['fields'], expectation_id)
+            self._validate(value, expected, expectation_id)
             if expected['id'] != expectation_id:
                 logger.debug(f"Expectation id mismatch. Expected '{expected['id']}' and was '{expectation_id}'. Updating expectation id.")
                 self.expectations[self._expectation_index]['id'] = expectation_id
