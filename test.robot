@@ -4,7 +4,7 @@ Library  RequestsLibrary
 
 *** Test Cases ***
 Test 1
-   Should be as expected   foo
+   Should be as expected   foobarzoo
    Should be as expected   ${1}
    Log   Hello World
    Should be as expected   ${null}
@@ -16,7 +16,7 @@ Test 1
 
 Test 2
   Keyword call   bar
-  Keyword call   bar
+  Run Keyword And Expect Error  *  Keyword call   zoo
 
 Test 3
   Create Session  google  http://www.google.com

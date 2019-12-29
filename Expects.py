@@ -1,5 +1,6 @@
-from typing import List, Optional, Dict, Mapping, Tuple
+from typing import List, Optional, Dict, Mapping, Tuple, cast
 import os
+import re
 import json
 import inspect
 import difflib
@@ -112,7 +113,22 @@ class Expects:
         else:
             logger.info(f"Value '{value}' is as expected")
 
-    def _validate_fields(self, value:object, fields:Dict[str, object], expectation_id:str) -> None:
+    def _validate_startswith(self, value:object, expected_start:str, expectation_id:str) -> None:
+        if not isinstance(value, str):
+            raise AssertionError(f"Value '{value}' is not a string")
+        if not value.startswith(expected_start):
+            raise AssertionError(f"Value '{value}' does not start with '{expected_start}'")
+        logger.info(f"Value startswith is as expected")
+
+    def _validate_regex(self, value:object, expected:str, expectation_id:str) -> None:
+        if not isinstance(value, str):
+            raise AssertionError(f"Value '{value}' is not a string")
+        matcher = re.compile(expected)
+        if not matcher.match(value):
+            raise AssertionError(f"Value '{value}' does not match")
+        logger.info(f"Value matches expected")
+
+    def _validate_fields(self, value:object, fields:Dict[str, Dict[str, object]], expectation_id:str) -> None:
         logger.info("Checking object")
         for field, val in inspect.getmembers(value):
             if field in fields:
@@ -123,17 +139,21 @@ class Expects:
         if 'value' in expected:
             self._validate_value(value, expected['value'], expectation_id)
         if 'fields' in expected:
-            self._validate_fields(value, expected['fields'], expectation_id)
+            self._validate_fields(value, cast(Dict[str, Dict[str, object]], expected['fields']), expectation_id)
+        if 'startswith' in expected:
+            self._validate_startswith(value, cast(str, expected['startswith']), expectation_id)
+        if 'regex' in expected:
+            self._validate_regex(value, cast(str, expected['regex']), expectation_id)
 
     def should_be_as_expected(self, value:object, id:Optional[str]=None) -> None:
         expectation_id:str = id if id else self._position[-1]
-        if not os.path.isfile(self.filename) or len(self.expectations) <= self._expectation_index:
+        self._expectation_index += 1
+        if not os.path.isfile(self.filename) or len(self.expectations) < self._expectation_index:
             self._store_new_expected_value(value, expectation_id)
         else:
             logger.debug(f"Validating that value '{value}' matches expectation")
-            expected = self.expectations[self._expectation_index]
+            expected = self.expectations[self._expectation_index-1]
             self._validate(value, expected, expectation_id)
             if expected['id'] != expectation_id:
                 logger.debug(f"Expectation id mismatch. Expected '{expected['id']}' and was '{expectation_id}'. Updating expectation id.")
-                self.expectations[self._expectation_index]['id'] = expectation_id
-        self._expectation_index += 1
+                self.expectations[self._expectation_index-1]['id'] = expectation_id
