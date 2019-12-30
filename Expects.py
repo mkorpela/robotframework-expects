@@ -257,5 +257,6 @@ class ValueInspector(Cmd):
 
     def do_fields(self, args) -> None:
         'Show fields with storable values'
-        for i, (field, _) in enumerate(self._fields):
-            logger.console(f"{i+1}. Field '{field}' has a storable value")
+        logger.console(f'== Fields for {self._value} ==')
+        for field, _ in self._fields:
+            logger.console(field)
