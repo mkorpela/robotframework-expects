@@ -1,11 +1,11 @@
 *** Settings ***
-Library  Expects.py
+Library  Expects.py  ${TRUE}
 Library  RequestsLibrary
 
 *** Test Cases ***
 Test 1
    Should be as expected   foobarzoo
-   Should be as expected   ${1}
+   Should be as expected   ${2}
    Log   Hello World
    Should be as expected   ${null}
    FOR    ${index}    IN RANGE    42

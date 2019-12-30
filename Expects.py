@@ -77,7 +77,7 @@ class Expects:
             expectations.append({'value':value, 'id':expectation_id})
         else:
             logger.console(f"\nGiven object '{value}' is of type '{type(value)}' and can not be stored. Falling back to Value Inspector.")
-            ValueInspector(value, expectation_id, expectations).cmdloop()
+            ComplexObjectValueInspector(value, expectation_id, expectations).cmdloop()
 
     def _report_unexpected(self, actual:object, expected:object) -> str:
         if isinstance(actual, str) and isinstance(expected, str):
@@ -93,15 +93,12 @@ class Expects:
         if value != expected:
             if self._interactive:
                 logger.console(f"\nExecution paused on row with id '{expectation_id}'")
-                logger.console(f"Validation failed replace '{expected}' with new value '{value}'? [y/n]?")
-                replace = input()
-                if replace == 'y':
-                    logger.info(f"Recording expected value {value}")
-                    if self._current_keyword == "UNKNOWN":
-                        expectations = self.expectations["Tests"][self._current_test]
-                    else:
-                        expectations = self.expectations["Keywords"][self._current_keyword]
-                    expectations[self._expectation_index] = {'value':value, 'id':expectation_id}
+                logger.console(f"Validation failed. '{expected}' differs from '{value}'")
+                if self._current_keyword == "UNKNOWN":
+                    expectations = self.expectations["Tests"][self._current_test]
+                else:
+                    expectations = self.expectations["Keywords"][self._current_keyword]
+                NotMatchingValueInspector(value, expectation_id, expectations).cmdloop()
             else:
                 raise AssertionError(self._report_unexpected(value, expected))
         else:
@@ -194,7 +191,8 @@ def _is_jsonable(x:object) -> bool:
     except (TypeError, OverflowError):
         return False
 
-class ValueInspector(Cmd):
+
+class _ValueInspector(Cmd):
     intro = '\n## Value inspector shell. Type help or ? to list commands. ##\n'
     prompt = 'inspector >> '
 
@@ -208,15 +206,42 @@ class ValueInspector(Cmd):
         self._value = value
         self._id = expectation_id
         self._expectations = expectations
+
+    def postloop(self):
+        sys.stdin = self._oldstdin
+        sys.stdout = self._oldstdout
+
+
+class NotMatchingValueInspector(_ValueInspector):
+
+    def __init__(self, value:object, expectation_id:str, expectations:List[Dict[str, object]]) -> None:
+        _ValueInspector.__init__(self, value, expectation_id, expectations)
+        self._expected = [e for e in expectations if e["id"] == expectation_id][0]
+
+    def do_diff(self, attrs) -> None:
+        'Show diff to expected value'
+        logger.console(f"Expected:{self._expected['value']}")
+        logger.console(f"Actual:{self._value}")
+
+    def do_replace(self, attrs) -> None:
+        'Replace expectation with current value'
+        logger.console(f"Replaced {self._expected['value']} with {self._value}")
+        self._expected['value'] = self._value
+
+    def do_quit(self, args) -> bool:
+        'Quit Value Inspector and store new expectations'
+        return True
+
+
+class ComplexObjectValueInspector(_ValueInspector):
+
+    def __init__(self, value:object, expectation_id:str, expectations:List[Dict[str, object]]) -> None:
+        _ValueInspector.__init__(self, value, expectation_id, expectations)
         self._fields:List[Tuple[str, Dict[str, object]]] = []
         for field, val in inspect.getmembers(self._value):
             if not field.startswith('_') and _is_jsonable(val):
                 self._fields.append((field, {'value':val}))
         self._selected_fields:Dict[str, object] = {}
-
-    def postloop(self):
-        sys.stdin = self._oldstdin
-        sys.stdout = self._oldstdout
 
     def do_show(self, field:str) -> None:
         'Show value of the current object or a field'
@@ -225,7 +250,7 @@ class ValueInspector(Cmd):
                 if f == field:
                     logger.console(f"Field:{field}\nvalue:{val['value']}\ntype:{type(val['value'])}")
             return
-        logger.console(f"\nValue '{self._value}'")
+        logger.console(f"\nValue: '{self._value}'")
 
     def complete_show(self, text:str, line:str, begidx:int, endidx:int) -> List[str]:
         completes:List[str] = []
@@ -251,7 +276,7 @@ class ValueInspector(Cmd):
         return completes
 
     def do_quit(self, args) -> bool:
-        'Quit Value Inspector and selected store expectations'
+        'Quit Value Inspector and store selected expectations'
         self._expectations.append({'fields':self._selected_fields, 'id':self._id})
         return True
 
