@@ -24,7 +24,7 @@ class Expects:
         self._current_keyword:str = "UNKNOWN"
 
     def _start_test(self, name:str, attrs:Mapping[str, str]) -> None:
-        self._position.append(attrs["longname"])
+        self._position.append(name)
         self._current_test = name
         self._expectation_index = 0
 
@@ -35,7 +35,8 @@ class Expects:
     def _start_keyword(self, name:str, attrs:Mapping[str, str]) -> None:
         if attrs['libname'] == '' and attrs['type'] == 'Keyword':
             self._current_keyword = name
-        if not(self._position):
+            self._position.append(name)
+        elif not(self._position):
             self._position = ['0', '0.' + str(self._row_index)]
         else:
             self._position.append(self._position[-1] + "." + str(self._row_index))
