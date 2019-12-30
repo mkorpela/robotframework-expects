@@ -228,6 +228,36 @@ class NotMatchingValueInspector(_ValueInspector):
         logger.console(f"Replaced {self._expected['value']} with {self._value}")
         self._expected['value'] = self._value
 
+    def do_min(self, minvalue:str) -> None:
+        'Set min constraint. Removes value constraint.'
+        min_val = float(minvalue)
+        logger.console(f"Setting min value constraint to {min_val}")
+        if 'value' in self._expected:
+            del self._expected['value']
+        self._expected['min'] = min_val
+
+    def do_max(self, maxvalue:str) -> None:
+        'Set max constraint. Removes value constraint.'
+        max_val = float(maxvalue)
+        logger.console(f"Setting max value constraint to {max_val}")
+        if 'value' in self._expected:
+            del self._expected['value']
+        self._expected['max'] = max_val
+
+    def do_startswith(self, value:str) -> None:
+        'Set startswith constraint. Removes value constraint.'
+        logger.console(f"Setting startswith constraint to '{value}'")
+        if 'value' in self._expected:
+            del self._expected['value']
+        self._expected['startswith'] = value
+
+    def do_regex(self, value:str) -> None:
+        'Set regex match constraint. Removes value constraint.'
+        logger.console(f"Setting regex constraint to '{value}'")
+        if 'value' in self._expected:
+            del self._expected['value']
+        self._expected['regex'] = value
+
     def do_quit(self, args) -> bool:
         'Quit Value Inspector and store new expectations'
         return True
