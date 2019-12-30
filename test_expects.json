@@ -203,6 +203,9 @@
           },
           "text": {
             "startswith": "<!doctype html><html itemscope=\"\" itemtype=\"http://schema.org/WebPage\" lang=\"fi\"><head><meta content=\"text/html; charset=UTF-8\" http-equiv=\"Content-Type\"><meta content=\"/images/branding/googleg/1x/googleg_standard_color_128dp.png\" itemprop=\"image\"><title>Google</title>"
+          },
+          "url": {
+            "value": "http://www.google.com/"
           }
         },
         "id": "Test 3.4"

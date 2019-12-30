@@ -4,6 +4,8 @@ import re
 import json
 import inspect
 import difflib
+from cmd import Cmd
+import sys
 from numbers import Number
 from robot.api import logger # type: ignore
 
@@ -65,44 +67,17 @@ class Expects:
         with open(self.filename, "w") as f:
             json.dump(self.expectations, f, indent=2, sort_keys=True)
 
-    def _is_jsonable(self, x:object) -> bool:
-        try:
-            json.dumps(x)
-            return True
-        except (TypeError, OverflowError):
-            return False
-
     def _store_new_expected_value(self, value:object, expectation_id:str) -> None:
         if self._current_keyword == "UNKNOWN":
             expectations = self.expectations["Tests"][self._current_test]
         else:
             expectations = self.expectations["Keywords"][self._current_keyword]
-        if self._is_jsonable(value):
-            logger.console(f"Recording expected value '{value}' for id '{expectation_id}")
+        if _is_jsonable(value):
+            logger.console(f"\nRecording expected value '{value}' for id '{expectation_id}'")
             expectations.append({'value':value, 'id':expectation_id})
         else:
-            logger.console(f"\nGiven object '{value}' is of type '{type(value)}' and can not be stored")
-            logger.console(f"Would you like to explore possible fields for validateable data in '{value}' [y/n]?")
-            explore = input()
-            if explore == 'y':
-                fields:List[Tuple[str, object]] = []
-                for field, val in inspect.getmembers(value):
-                    if not field.startswith('_') and self._is_jsonable(val):
-                        logger.console(f"{len(fields)+1}. Field '{field}' has a storable value")
-                        fields.append((field, {'value':val}))
-                if not fields:
-                    logger.console(f"No storable fields found", stream='stderr')
-                    raise AssertionError("Could not expect this")
-                else:
-                    logger.console(f"Select fields by typing their indexes separated with a comma to store values from:")
-                    field_indexes = input()
-                    selected_fields = dict([fields[int(i)-1] for i in field_indexes.split(',')])
-                    if not selected_fields:
-                        logger.console(f"No fields selected", stream='stderr')
-                        raise AssertionError("Could not expect this")
-                    for f in selected_fields:
-                        logger.console(f"Recording expected value for field '{f}' for id '{expectation_id}'")
-                    expectations.append({'fields':selected_fields, 'id':expectation_id})
+            logger.console(f"\nGiven object '{value}' is of type '{type(value)}' and can not be stored. Falling back to Value Inspector.")
+            ValueInspector(value, expectation_id, expectations).cmdloop()
 
     def _report_unexpected(self, actual:object, expected:object) -> str:
         if isinstance(actual, str) and isinstance(expected, str):
@@ -211,3 +186,76 @@ class Expects:
             if expected['id'] != expectation_id:
                 logger.debug(f"Expectation id mismatch. Expected '{expected['id']}' and was '{expectation_id}'. Updating expectation id.")
                 expected['id'] = expectation_id
+
+def _is_jsonable(x:object) -> bool:
+    try:
+        json.dumps(x)
+        return True
+    except (TypeError, OverflowError):
+        return False
+
+class ValueInspector(Cmd):
+    intro = '\n## Value inspector shell. Type help or ? to list commands. ##\n'
+    prompt = 'inspector >> '
+
+    def __init__(self, value:object, expectation_id:str, expectations:List[Dict[str, object]]) -> None:
+        # Robot Framework mangles outputs and inputs
+        self._oldstdin = sys.stdin
+        self._oldstdout = sys.stdout
+        sys.stdin = sys.__stdin__
+        sys.stdout = sys.__stdout__
+        Cmd.__init__(self)
+        self._value = value
+        self._id = expectation_id
+        self._expectations = expectations
+        self._fields:List[Tuple[str, Dict[str, object]]] = []
+        for field, val in inspect.getmembers(self._value):
+            if not field.startswith('_') and _is_jsonable(val):
+                self._fields.append((field, {'value':val}))
+        self._selected_fields:Dict[str, object] = {}
+
+    def postloop(self):
+        sys.stdin = self._oldstdin
+        sys.stdout = self._oldstdout
+
+    def do_show(self, field:str) -> None:
+        'Show value of the current object or a field'
+        if field:
+            for f, val in self._fields:
+                if f == field:
+                    logger.console(f"Field:{field}\nvalue:{val['value']}\ntype:{type(val['value'])}")
+            return
+        logger.console(f"\nValue '{self._value}'")
+
+    def complete_show(self, text:str, line:str, begidx:int, endidx:int) -> List[str]:
+        completes:List[str] = []
+        for field, _ in self._fields:
+            if field.startswith(text):
+                completes.append(field)
+        return completes
+
+    def do_expect(self, field:str) -> None:
+        'Set expectation for field to contain current value'
+        for f, val in self._fields:
+            if f == field:
+                self._selected_fields[field] = val
+                logger.console(f"Set expectation for field {field}")
+                return
+        logger.console(f"Could not find field {field}")
+
+    def complete_expect(self, text:str, line:str, begidx:int, endidx:int) -> List[str]:
+        completes:List[str] = []
+        for field, _ in self._fields:
+            if field.startswith(text):
+                completes.append(field)
+        return completes
+
+    def do_quit(self, args) -> bool:
+        'Quit Value Inspector and selected store expectations'
+        self._expectations.append({'fields':self._selected_fields, 'id':self._id})
+        return True
+
+    def do_fields(self, args) -> None:
+        'Show fields with storable values'
+        for i, (field, _) in enumerate(self._fields):
+            logger.console(f"{i+1}. Field '{field}' has a storable value")
