@@ -192,6 +192,47 @@ def _is_jsonable(x:object) -> bool:
         return False
 
 
+class Validator:
+
+    def validate(self, value:object, expected:Dict[str, object]) -> bool:
+        isValid = True
+        if 'value' in expected:
+            isValid &= self._validate_value(value, expected['value'])
+        if 'fields' in expected:
+            isValid &= self._validate_fields(value, cast(Dict[str, Dict[str, object]], expected['fields']))
+        if 'startswith' in expected:
+            isValid &= self._validate_startswith(value, cast(str, expected['startswith']))
+        if 'regex' in expected:
+            isValid &= self._validate_regex(value, cast(str, expected['regex']))
+        if 'min' in expected:
+            isValid &= self._validate_min(value, cast(float, expected['min']))
+        if 'max' in expected:
+            isValid &= self._validate_max(value, cast(float, expected['max']))
+        return isValid
+
+    def _validate_value(self, value:object, expected:object) -> bool:
+        return value != expected
+
+    def _validate_startswith(self, value:object, expected_start:str) -> bool:
+        return isinstance(value, str) and value.startswith(expected_start)
+
+    def _validate_regex(self, value:object, expected:str) -> bool:
+        return isinstance(value, str) and bool(re.compile(expected).match(value))
+
+    def _validate_min(self, value:object, expected:float) -> bool:
+        return isinstance(value, Number) and cast(float, value) >= expected
+
+    def _validate_max(self, value:object, expected:float) -> bool:
+        return isinstance(value, Number) and cast(float, value) <= expected
+
+    def _validate_fields(self, value:object, fields:Dict[str, Dict[str, object]]) -> bool:
+        isValid = True
+        for field, val in inspect.getmembers(value):
+            if field in fields:
+                isValid &= self.validate(val, fields[field])
+        return isValid
+
+
 class _ValueInspector(Cmd):
     intro = '\n## Value inspector shell. Type help or ? to list commands. ##\n'
     prompt = 'inspector >> '
@@ -217,15 +258,16 @@ class NotMatchingValueInspector(_ValueInspector):
     def __init__(self, value:object, expectation_id:str, expectations:List[Dict[str, object]]) -> None:
         _ValueInspector.__init__(self, value, expectation_id, expectations)
         self._expected = [e for e in expectations if e["id"] == expectation_id][0]
+        self._old_expected_value = self._expected.get('value')
 
     def do_diff(self, attrs) -> None:
         'Show diff to expected value'
-        logger.console(f"Expected:{self._expected['value']}")
+        logger.console(f"Expected:{self._old_expected_value}")
         logger.console(f"Actual:{self._value}")
 
     def do_replace(self, attrs) -> None:
         'Replace expectation with current value'
-        logger.console(f"Replaced {self._expected['value']} with {self._value}")
+        logger.console(f"Replaced {self._old_expected_value} with {self._value}")
         self._expected['value'] = self._value
 
     def do_min(self, minvalue:str) -> None:
@@ -257,6 +299,18 @@ class NotMatchingValueInspector(_ValueInspector):
         if 'value' in self._expected:
             del self._expected['value']
         self._expected['regex'] = value
+
+    def do_test(self, attrs) -> None:
+        'Test if values match the constraints'
+        logger.console(f"Expected: {self._expected}")
+        if Validator().validate(self._value, self._expected):
+            logger.console("PASSED. New value matches constraints")
+        else:
+            logger.console("FAILED. New value did not match constraints")
+        if Validator().validate(self._old_expected_value, self._expected):
+            logger.console("PASSED. Old value matches constraints")
+        else:
+            logger.console("FAILED. Old value did not match constraints")
 
     def do_quit(self, args) -> bool:
         'Quit Value Inspector and store new expectations'
