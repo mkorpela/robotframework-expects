@@ -1,5 +1,5 @@
 *** Settings ***
-Library  Expects.py  INTERACTIVE
+Library  Expects.py  AUTOMATIC
 Library  RequestsLibrary
 
 *** Test Cases ***

@@ -17,7 +17,7 @@ class Expects:
     def __init__(self, mode:str='NORMAL') -> None:
         '''mode can be NORMAL, INTERACTIVE or AUTOMATIC
         NORMAL = validate results against expectations
-        INTERACTIVE = pause execution on validation failure and allow changes to validation criteria
+        INTERACTIVE = pause execution on validation failure and allow changes to validation criteria.
         AUTOMATIC = store all values as expectations
         '''
         self.ROBOT_LIBRARY_LISTENER = self
@@ -72,18 +72,6 @@ class Expects:
         with open(self.filename, "w") as f:
             json.dump(self.expectations, f, indent=2, sort_keys=True)
 
-    def _store_new_expected_value(self, value:object, expectation_id:str) -> None:
-        if self._current_keyword == "UNKNOWN":
-            expectations = self.expectations["Tests"][self._current_test]
-        else:
-            expectations = self.expectations["Keywords"][self._current_keyword]
-        if _is_jsonable(value):
-            logger.console(f"\nRecording expected value '{value}' for id '{expectation_id}'")
-            expectations.append({'value':value, 'id':expectation_id})
-        else:
-            logger.console(f"\nGiven object '{value}' is of type '{type(value)}' and can not be stored. Falling back to Value Inspector.")
-            ComplexObjectValueInspector(value, expectation_id, expectations).cmdloop()
-
     def _find_expected(self, expectation_id:str, current_expectations:List[Dict[str, object]]) -> Optional[Dict[str, object]]:
         for exp in current_expectations:
             if exp['id'] == expectation_id:
@@ -106,7 +94,9 @@ class Expects:
         self._expectation_index += 1
         expected = self._find_expected(expectation_id, current_expectations)
         if expected is None:
-            self._store_new_expected_value(value, expectation_id)
+            if self._mode == 'NORMAL':
+                raise AssertionError(f"Unexpected {value}")
+            ExpectationResolver(value, expectation_id, current_expectations).resolve()
         else:
             logger.debug(f"Validating that value '{value}' matches expectation")
             if not Validator().validate(value, expected):
@@ -115,6 +105,13 @@ class Expects:
                     NotMatchingValueInspector(value, expectation_id, current_expectations).cmdloop()
                     if not Validator().validate(value, expected):
                         raise AssertionError(f"Unexpected {value}")
+                elif self._mode == 'AUTOMATIC':
+                    logger.console(f"\nUnexpected {value} - updating expectations")
+                    ExpectationResolver(value, expectation_id, current_expectations).resolve()
+                    if not Validator().validate(value, expected):
+                        raise AssertionError(f"Unexpected {value}")
+                    else:
+                        logger.console(f"resolved expectations")
                 else:
                     raise AssertionError(f"Unexpected {value}")
             if expected['id'] != expectation_id:
@@ -355,55 +352,66 @@ class NotMatchingValueInspector(_ValueInspector):
         return True
 
 
-class ComplexObjectValueInspector(_ValueInspector):
+class ExpectationResolver:
 
     def __init__(self, value:object, expectation_id:str, expectations:List[Dict[str, object]]) -> None:
-        _ValueInspector.__init__(self, value, expectation_id, expectations)
+        self._value = value
+        exps = [e for e in expectations if e["id"] == expectation_id]
+        if not exps:
+            self._expected:Dict[str, object] = {'id':expectation_id}
+            expectations.append(self._expected)
+        else:
+            self._expected = exps[0]
+        self._has_old_value = 'value' in self._expected
+        self._old_expected_value = self._expected.get('value')
         self._fields:List[Tuple[str, Dict[str, object]]] = []
         for field, val in inspect.getmembers(self._value):
             if not field.startswith('_') and _is_jsonable(val):
                 self._fields.append((field, {'value':val}))
-        self._selected_fields:Dict[str, object] = {}
 
-    def do_show(self, field:str) -> None:
-        'Show value of the current object or a field'
-        if field:
-            for f, val in self._fields:
-                if f == field:
-                    logger.console(f"Field:{field}\nvalue:{val['value']}\ntype:{type(val['value'])}")
+    def resolve(self):
+        if isinstance(self._value, str):
+            return self._resolve_str()
+        if isinstance(self._value, Number):
+            return self._resolve_number()
+        if _is_jsonable(self._value) and not self._has_old_value:
+            self._expected['value'] = self._value
             return
-        logger.console(f"\nValue: '{self._value}'")
+        if not _is_jsonable(self._value) and self._fields:
+            return self._resolve_complex_object()
+        raise AssertionError(f"No strategy for type {type(self._value)}")
 
-    def complete_show(self, text:str, line:str, begidx:int, endidx:int) -> List[str]:
-        completes:List[str] = []
-        for field, _ in self._fields:
-            if field.startswith(text):
-                completes.append(field)
-        return completes
-
-    def do_expect(self, field:str) -> None:
-        'Set expectation for field to contain current value'
-        for f, val in self._fields:
-            if f == field:
-                self._selected_fields[field] = val
-                logger.console(f"Set expectation for field {field}")
+    def _resolve_str(self):
+        if self._has_old_value:
+            matching_start = -1
+            for index, (i,j) in enumerate(zip(self._value, self._old_expected_value)):
+                if i == j:
+                    matching_start = index
+            if matching_start > -1:
+                del self._expected['value']
+                self._expected['startswith'] = self._value[:matching_start+1]
+                logger.console(f"Resolved with startswith '{self._value[:matching_start+1]}'")
                 return
-        logger.console(f"Could not find field {field}")
+        else:
+            self._expected['value'] = self._value
 
-    def complete_expect(self, text:str, line:str, begidx:int, endidx:int) -> List[str]:
-        completes:List[str] = []
-        for field, _ in self._fields:
-            if field.startswith(text):
-                completes.append(field)
-        return completes
+    def _resolve_number(self):
+        if self._has_old_value:
+            del self._expected['value']
+            self._expected['min'] = min(self._value, self._old_expected_value)
+            self._expected['max'] = max(self._value, self._old_expected_value)
+            logger.console(f"Resolved with min {self._expected['min']} and max {self._expected['max']}")
+            return
+        if 'min' in self._expected and 'man' in self._expected:
+            self._expected['min'] = min(self._value, self._expected['min'])
+            self._expected['max'] = max(self._value, self._expected['max'])
+            assert 'value' not in self._expected
+            logger.console(f"Resolved with min {self._expected['min']} and max {self._expected['max']}")
+            return
+        self._expected['value'] = self._value
 
-    def do_quit(self, args) -> bool:
-        'Quit Value Inspector and store selected expectations'
-        self._expectations.append({'fields':self._selected_fields, 'id':self._id})
-        return True
-
-    def do_fields(self, args) -> None:
-        'Show fields with storable values'
-        logger.console(f'== Fields for {self._value} ==')
-        for field, _ in self._fields:
-            logger.console(field)
+    def _resolve_complex_object(self):
+        if self._has_old_value:
+            raise AssertionError(f"No startegy for complex object with already expected value")
+        self._expected['fields'] = dict(self._fields)
+        logger.console("Resolved by expecting all fields")
