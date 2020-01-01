@@ -108,6 +108,8 @@ class Expects:
                 if self._interactive:
                     logger.console(f"\nExecution paused on row with id '{expectation_id}'")
                     NotMatchingValueInspector(value, expectation_id, current_expectations).cmdloop()
+                    if not Validator().validate(value, expected):
+                        raise AssertionError(f"Unexpected {value}")
                 else:
                     raise AssertionError(f"Unexpected {value}")
             if expected['id'] != expectation_id:
@@ -281,6 +283,19 @@ class NotMatchingValueInspector(_ValueInspector):
             del self._expected['fields'][parts[0]]['value']
         self._expected['fields'][parts[0]][parts[1]] = parts[2]
 
+    def complete_field(self, text:str, line:str, begidx:int, endidx:int) -> List[str]:
+        completes:List[str] = []
+        for field, _ in self._fields:
+            if field.startswith(text):
+                completes.append(field)
+        a = [s.strip() for s in line.split(None, 2)]
+        if len(a) >= 2 and a[1] in [f[0] for f in self._fields]:
+            completes.clear()
+            for expect in ['max', 'min', 'startswith', 'regex', 'value']:
+                if expect.startswith(text):
+                    completes.append(expect)
+        return completes
+
     def do_show(self, field:str) -> None:
         'Show value of the current object or a field'
         if field:
@@ -288,12 +303,12 @@ class NotMatchingValueInspector(_ValueInspector):
                 if f == field:
                     logger.console(f"Field:{field}\nvalue:{val['value']}\ntype:{type(val['value'])}")
             return
-        logger.console(f"Value: '{self._value}'")
+        logger.console(f"Value:{self._value}\ntype:{type(self._value)}")
         if not self._fields:
             return
-        logger.console(f'== Fields for {self._value} ==')
+        logger.console(f'Fields:')
         for field, _ in self._fields:
-            logger.console(field)
+            logger.console('  '+field)
 
     def complete_show(self, text:str, line:str, begidx:int, endidx:int) -> List[str]:
         completes:List[str] = []
