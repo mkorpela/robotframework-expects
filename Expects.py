@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict, Mapping, Tuple, cast
+from typing import List, Optional, Dict, Mapping, Tuple, cast, Set
 import os
 import re
 import json
@@ -211,25 +211,60 @@ class Validator:
         return isValid
 
     def _validate_value(self, value:object, expected:object) -> bool:
-        return value != expected
+        if value != expected:
+            logger.console(f"[VALUE]: Validation failed. '{expected}' differs from '{value}'")
+            return False
+        return True
 
     def _validate_startswith(self, value:object, expected_start:str) -> bool:
-        return isinstance(value, str) and value.startswith(expected_start)
+        if not isinstance(value, str):
+            logger.console(f"[TYPE]: Value '{value}' is not a string")
+            return False
+        if not value.startswith(expected_start):
+            logger.console(f"[STARTSWITH]: Value '{value}' does not start with '{expected_start}'")
+            return False
+        return True
 
     def _validate_regex(self, value:object, expected:str) -> bool:
-        return isinstance(value, str) and bool(re.compile(expected).match(value))
+        if not isinstance(value, str):
+            logger.console(f"[TYPE]: Value '{value}' is not a string")
+            return False
+        if not re.compile(expected).match(value):
+            logger.console(f"[REGEX]: Value '{value}' does not match patter")
+            return False
+        return True
 
     def _validate_min(self, value:object, expected:float) -> bool:
-        return isinstance(value, Number) and cast(float, value) >= expected
+        if not isinstance(value, Number):
+            logger.console(f"[TYPE]: Value '{value}' is not a number")
+            return False
+        if not cast(float, value) >= expected:
+            logger.console(f"[MIN]: Value {value} is smaller than expected")
+            return False
+        return True
 
     def _validate_max(self, value:object, expected:float) -> bool:
-        return isinstance(value, Number) and cast(float, value) <= expected
+        if not isinstance(value, Number):
+            logger.console(f"[TYPE]: Value '{value}' is not a number")
+            return False
+        if not cast(float, value) >= expected:
+            logger.console(f"[MAX]: Value {value} is bigger than expected")
+            return False
+        return True
 
     def _validate_fields(self, value:object, fields:Dict[str, Dict[str, object]]) -> bool:
         isValid = True
+        matchingFields:Set[str] = set()
         for field, val in inspect.getmembers(value):
             if field in fields:
-                isValid &= self.validate(val, fields[field])
+                matchingFields.add(field)
+                if not self.validate(val, fields[field]):
+                    logger.console(f"[FIELD]: {field} has unexpected value")
+                    isValid = False
+        missingFields = set(fields.keys()) - matchingFields
+        if missingFields:
+            logger.console(f'[FIELD]: Missing expected fields [{", ".join(missingFields)}] in value')
+            return False
         return isValid
 
 
@@ -302,7 +337,7 @@ class NotMatchingValueInspector(_ValueInspector):
 
     def do_test(self, attrs) -> None:
         'Test if values match the constraints'
-        logger.console(f"Expected: {self._expected}")
+        logger.console(f"Expecting: {self._expected}")
         if Validator().validate(self._value, self._expected):
             logger.console("PASSED. New value matches constraints")
         else:
