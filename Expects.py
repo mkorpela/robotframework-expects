@@ -279,9 +279,14 @@ class NotMatchingValueInspector(_ValueInspector):
             self._expected['fields'] = []
         if parts[0] not in self._expected['fields']:
             self._expected['fields'][parts[0]] = {}
+        if len(parts) == 1:
+            self._expected['fields'][parts[0]] = [v for f,v in self._fields if f == parts[0]][0]
+            logger.console(f"Expecting field: {parts[0]} to have value {self._expected['fields'][parts[0]][1]}")
+            return
         if parts[1] != 'value' and 'value' in self._expected['fields'][parts[0]]:
             del self._expected['fields'][parts[0]]['value']
         self._expected['fields'][parts[0]][parts[1]] = parts[2]
+        logger.console(f"Expecting field: {parts[0]} to match {parts[1]} with {parts[2]}")
 
     def complete_field(self, text:str, line:str, begidx:int, endidx:int) -> List[str]:
         completes:List[str] = []
