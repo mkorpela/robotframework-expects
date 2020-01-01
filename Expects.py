@@ -396,13 +396,14 @@ class ExpectationResolver:
             self._expected['value'] = self._value
 
     def _resolve_number(self):
+        assert 'value' not in self._expected or 'min' not in self._expected
         if self._has_old_value:
             del self._expected['value']
             self._expected['min'] = min(self._value, self._old_expected_value)
             self._expected['max'] = max(self._value, self._old_expected_value)
             logger.console(f"Resolved with min {self._expected['min']} and max {self._expected['max']}")
             return
-        if 'min' in self._expected and 'man' in self._expected:
+        if 'min' in self._expected and 'max' in self._expected:
             self._expected['min'] = min(self._value, self._expected['min'])
             self._expected['max'] = max(self._value, self._expected['max'])
             assert 'value' not in self._expected
@@ -412,6 +413,8 @@ class ExpectationResolver:
 
     def _resolve_complex_object(self):
         if self._has_old_value:
+            raise AssertionError(f"No startegy for complex object with already expected value")
+        if 'fields' in self._expected:
             raise AssertionError(f"No startegy for complex object with already expected value")
         self._expected['fields'] = dict(self._fields)
         logger.console("Resolved by expecting all fields")
