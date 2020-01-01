@@ -198,8 +198,32 @@
     "Test 3": [
       {
         "fields": {
+          "apparent_encoding": {
+            "value": "ISO-8859-1"
+          },
+          "encoding": {
+            "value": "ISO-8859-1"
+          },
+          "history": {
+            "value": []
+          },
+          "is_permanent_redirect": {
+            "value": false
+          },
+          "is_redirect": {
+            "value": false
+          },
+          "links": {
+            "value": {}
+          },
+          "next": {
+            "value": null
+          },
           "ok": {
             "value": true
+          },
+          "reason": {
+            "value": "OK"
           },
           "status_code": {
             "value": 200
