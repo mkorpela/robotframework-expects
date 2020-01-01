@@ -199,11 +199,14 @@
     "Test 3": [
       {
         "fields": {
+          "ok": {
+            "value": true
+          },
           "status_code": {
             "value": 200
           },
           "text": {
-            "startswith": "<!doctype html><html itemscope=\"\" itemtype=\"http://schema.org/WebPage\" lang=\"fi\"><head><meta content=\"text/html; charset=UTF-8\" http-equiv=\"Content-Type\"><meta content=\"/images/branding/googleg/1x/googleg_standard_color_128dp.png\" itemprop=\"image\"><title>Google</title>"
+            "startswith": "<!doctype html><html"
           },
           "url": {
             "value": "http://www.google.com/"

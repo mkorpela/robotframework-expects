@@ -14,13 +14,18 @@ class Expects:
     ROBOT_LIBRARY_SCOPE = 'TEST SUITE'
     ROBOT_LISTENER_API_VERSION = 2
 
-    def __init__(self, interactive:bool=False) -> None:
+    def __init__(self, mode:str='NORMAL') -> None:
+        '''mode can be NORMAL, INTERACTIVE or AUTOMATIC
+        NORMAL = validate results against expectations
+        INTERACTIVE = pause execution on validation failure and allow changes to validation criteria
+        AUTOMATIC = store all values as expectations
+        '''
         self.ROBOT_LIBRARY_LISTENER = self
         self.filename:str
         self.expectations:Dict[str, Dict[str, List[Dict[str, object]]]] = {"Tests":{}, "Keywords":{}}
         self._position:List[str] = []
         self._row_index:int = 0
-        self._interactive = interactive
+        self._mode = mode
         self._expectation_index = 0
         self._current_test:str = "UNKNOWN"
         self._current_keyword:str = "UNKNOWN"
@@ -105,7 +110,7 @@ class Expects:
         else:
             logger.debug(f"Validating that value '{value}' matches expectation")
             if not Validator().validate(value, expected):
-                if self._interactive:
+                if self._mode == 'INTERACTIVE':
                     logger.console(f"\nExecution paused on row with id '{expectation_id}'")
                     NotMatchingValueInspector(value, expectation_id, current_expectations).cmdloop()
                     if not Validator().validate(value, expected):
@@ -275,18 +280,27 @@ class NotMatchingValueInspector(_ValueInspector):
     def do_field(self, line:str) -> None:
         'Set field specific expectation.'
         parts = line.split(None, 2)
-        if 'fields' not in self._expected:
-            self._expected['fields'] = []
-        if parts[0] not in self._expected['fields']:
-            self._expected['fields'][parts[0]] = {}
-        if len(parts) == 1:
-            self._expected['fields'][parts[0]] = [v for f,v in self._fields if f == parts[0]][0]
-            logger.console(f"Expecting field: {parts[0]} to have value {self._expected['fields'][parts[0]][1]}")
+        if not parts:
+            logger.console("field command needs a field name")
             return
-        if parts[1] != 'value' and 'value' in self._expected['fields'][parts[0]]:
-            del self._expected['fields'][parts[0]]['value']
-        self._expected['fields'][parts[0]][parts[1]] = parts[2]
-        logger.console(f"Expecting field: {parts[0]} to match {parts[1]} with {parts[2]}")
+        name:str = parts[0]
+        matching = [v for f,v in self._fields if f == name]
+        if not matching:
+            logger.console("Unknown field name '{name}'")
+            return
+        if 'fields' not in self._expected:
+            self._expected['fields'] = {}
+        fields = cast(Dict[str, Dict[str, object]], self._expected['fields'])
+        if name not in fields:
+            fields[name] = {}
+        if len(parts) == 1:
+            fields[name] = matching[0]
+            logger.console(f"Expecting field: {name} to have value {fields[name]['value']}")
+            return
+        if parts[1] != 'value' and 'value' in fields[name]:
+            del fields[name]['value']
+        fields[name][parts[1]] = parts[2]
+        logger.console(f"Expecting field: {name} to match {parts[1]} with {parts[2]}")
 
     def complete_field(self, text:str, line:str, begidx:int, endidx:int) -> List[str]:
         completes:List[str] = []
