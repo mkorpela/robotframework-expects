@@ -79,81 +79,6 @@ class Expects:
             logger.console(f"\nGiven object '{value}' is of type '{type(value)}' and can not be stored. Falling back to Value Inspector.")
             ComplexObjectValueInspector(value, expectation_id, expectations).cmdloop()
 
-    def _report_unexpected(self, actual:object, expected:object) -> str:
-        if isinstance(actual, str) and isinstance(expected, str):
-            index = 0
-            for i in (i for i, (a, e) in enumerate(zip(actual, expected)) if a != e):
-                index = i
-                break
-            diff = "\n".join(difflib.ndiff(actual.splitlines(keepends=True), expected.splitlines(keepends=True)))
-            return f"Strings differ after {index} characters:\n{diff}"
-        return f"Unexpected {actual}. Expected it to be {expected}"
-
-    def _validate_value(self, value:object, expected:object, expectation_id:str) -> None:
-        if value != expected:
-            if self._interactive:
-                logger.console(f"\nExecution paused on row with id '{expectation_id}'")
-                logger.console(f"Validation failed. '{expected}' differs from '{value}'")
-                if self._current_keyword == "UNKNOWN":
-                    expectations = self.expectations["Tests"][self._current_test]
-                else:
-                    expectations = self.expectations["Keywords"][self._current_keyword]
-                NotMatchingValueInspector(value, expectation_id, expectations).cmdloop()
-            else:
-                raise AssertionError(self._report_unexpected(value, expected))
-        else:
-            logger.info(f"Value '{value}' is as expected")
-
-    def _validate_startswith(self, value:object, expected_start:str, expectation_id:str) -> None:
-        if not isinstance(value, str):
-            raise AssertionError(f"Value '{value}' is not a string")
-        if not value.startswith(expected_start):
-            raise AssertionError(f"Value '{value}' does not start with '{expected_start}'")
-        logger.info(f"Value startswith is as expected")
-
-    def _validate_regex(self, value:object, expected:str, expectation_id:str) -> None:
-        if not isinstance(value, str):
-            raise AssertionError(f"Value '{value}' is not a string")
-        matcher = re.compile(expected)
-        if not matcher.match(value):
-            raise AssertionError(f"Value '{value}' does not match")
-        logger.info(f"Value matches expected")
-
-    def _validate_min(self, value:object, expected:float, expectation_id:str) -> None:
-        if not isinstance(value, Number):
-            raise AssertionError(f"Value {value} is not of numeric type")
-        if cast(float, value) < expected:
-            raise AssertionError(f"Value {value} is smaller than {expected}")
-        logger.info(f"Value is bigger than minimum expected")
-
-    def _validate_max(self, value:object, expected:float, expectation_id:str) -> None:
-        if not isinstance(value, Number):
-            raise AssertionError(f"Value {value} is not of numeric type")
-        if cast(float, value) > expected:
-            raise AssertionError(f"Value {value} is bigger than {expected}")
-        logger.info(f"Value is smaller than maximum expected")
-
-    def _validate_fields(self, value:object, fields:Dict[str, Dict[str, object]], expectation_id:str) -> None:
-        logger.info("Checking object")
-        for field, val in inspect.getmembers(value):
-            if field in fields:
-                self._validate(val, fields[field], expectation_id)
-                logger.info(f"Field '{field}' is as expected")
-
-    def _validate(self, value:object, expected:Dict[str, object], expectation_id:str) -> None:
-        if 'value' in expected:
-            self._validate_value(value, expected['value'], expectation_id)
-        if 'fields' in expected:
-            self._validate_fields(value, cast(Dict[str, Dict[str, object]], expected['fields']), expectation_id)
-        if 'startswith' in expected:
-            self._validate_startswith(value, cast(str, expected['startswith']), expectation_id)
-        if 'regex' in expected:
-            self._validate_regex(value, cast(str, expected['regex']), expectation_id)
-        if 'min' in expected:
-            self._validate_min(value, cast(float, expected['min']), expectation_id)
-        if 'max' in expected:
-            self._validate_max(value, cast(float, expected['max']), expectation_id)
-
     def _find_expected(self, expectation_id:str, current_expectations:List[Dict[str, object]]) -> Optional[Dict[str, object]]:
         for exp in current_expectations:
             if exp['id'] == expectation_id:
@@ -179,7 +104,12 @@ class Expects:
             self._store_new_expected_value(value, expectation_id)
         else:
             logger.debug(f"Validating that value '{value}' matches expectation")
-            self._validate(value, expected, expectation_id)
+            if not Validator().validate(value, expected):
+                if self._interactive:
+                    logger.console(f"\nExecution paused on row with id '{expectation_id}'")
+                    NotMatchingValueInspector(value, expectation_id, current_expectations).cmdloop()
+                else:
+                    raise AssertionError(f"Unexpected {value}")
             if expected['id'] != expectation_id:
                 logger.debug(f"Expectation id mismatch. Expected '{expected['id']}' and was '{expectation_id}'. Updating expectation id.")
                 expected['id'] = expectation_id
@@ -238,7 +168,7 @@ class Validator:
         if not isinstance(value, Number):
             logger.console(f"[TYPE]: Value '{value}' is not a number")
             return False
-        if not cast(float, value) >= expected:
+        if cast(float, value) < expected:
             logger.console(f"[MIN]: Value {value} is smaller than expected")
             return False
         return True
@@ -247,7 +177,7 @@ class Validator:
         if not isinstance(value, Number):
             logger.console(f"[TYPE]: Value '{value}' is not a number")
             return False
-        if not cast(float, value) >= expected:
+        if cast(float, value) > expected:
             logger.console(f"[MAX]: Value {value} is bigger than expected")
             return False
         return True
@@ -293,7 +223,12 @@ class NotMatchingValueInspector(_ValueInspector):
     def __init__(self, value:object, expectation_id:str, expectations:List[Dict[str, object]]) -> None:
         _ValueInspector.__init__(self, value, expectation_id, expectations)
         self._expected = [e for e in expectations if e["id"] == expectation_id][0]
+        self._has_old_value = 'value' in self._expected
         self._old_expected_value = self._expected.get('value')
+        self._fields:List[Tuple[str, Dict[str, object]]] = []
+        for field, val in inspect.getmembers(self._value):
+            if not field.startswith('_') and _is_jsonable(val):
+                self._fields.append((field, {'value':val}))
 
     def do_diff(self, attrs) -> None:
         'Show diff to expected value'
@@ -335,6 +270,38 @@ class NotMatchingValueInspector(_ValueInspector):
             del self._expected['value']
         self._expected['regex'] = value
 
+    def do_field(self, line:str) -> None:
+        'Set field specific expectation.'
+        parts = line.split(None, 2)
+        if 'fields' not in self._expected:
+            self._expected['fields'] = []
+        if parts[0] not in self._expected['fields']:
+            self._expected['fields'][parts[0]] = {}
+        if parts[1] != 'value' and 'value' in self._expected['fields'][parts[0]]:
+            del self._expected['fields'][parts[0]]['value']
+        self._expected['fields'][parts[0]][parts[1]] = parts[2]
+
+    def do_show(self, field:str) -> None:
+        'Show value of the current object or a field'
+        if field:
+            for f, val in self._fields:
+                if f == field:
+                    logger.console(f"Field:{field}\nvalue:{val['value']}\ntype:{type(val['value'])}")
+            return
+        logger.console(f"Value: '{self._value}'")
+        if not self._fields:
+            return
+        logger.console(f'== Fields for {self._value} ==')
+        for field, _ in self._fields:
+            logger.console(field)
+
+    def complete_show(self, text:str, line:str, begidx:int, endidx:int) -> List[str]:
+        completes:List[str] = []
+        for field, _ in self._fields:
+            if field.startswith(text):
+                completes.append(field)
+        return completes
+
     def do_test(self, attrs) -> None:
         'Test if values match the constraints'
         logger.console(f"Expecting: {self._expected}")
@@ -342,6 +309,8 @@ class NotMatchingValueInspector(_ValueInspector):
             logger.console("PASSED. New value matches constraints")
         else:
             logger.console("FAILED. New value did not match constraints")
+        if not self._has_old_value:
+            return
         if Validator().validate(self._old_expected_value, self._expected):
             logger.console("PASSED. Old value matches constraints")
         else:
