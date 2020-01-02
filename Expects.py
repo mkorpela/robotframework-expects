@@ -383,11 +383,12 @@ class ExpectationResolver:
     def _resolve_str(self):
         if self._has_old_value:
             nonamatch = [index for index, (i,j) in enumerate(zip(self._value, self._old_expected_value)) if i != j]
-            if nonamatch:
+            if nonamatch and nonamatch[0] > 0:
                 del self._expected['value']
                 self._expected['startswith'] = self._value[:nonamatch[0]]
                 logger.console(f"Resolved with startswith '{self._value[:nonamatch[0]]}'")
                 return
+            raise AssertionError("Could not resolve with startswith")
         else:
             self._expected['value'] = self._value
 
