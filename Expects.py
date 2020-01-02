@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict, Mapping, Tuple, cast, Set
+from typing import List, Optional, Dict, Mapping, Tuple, cast, Set, Callable
 import os
 import re
 import json
@@ -101,21 +101,22 @@ class Expects:
             ExpectationResolver(value, expected).resolve()
         else:
             logger.debug(f"Validating that value '{value}' matches expectation")
-            if not Validator().validate(value, expected):
+            if not Validator(logger.info).validate(value, expected):
                 if self._mode == 'INTERACTIVE':
                     logger.console(f"\nExecution paused on row with id '{expectation_id}'")
                     NotMatchingValueInspector(value, expectation_id, current_expectations).cmdloop()
-                    if not Validator().validate(value, expected):
+                    if not Validator(logger.console).validate(value, expected):
                         raise AssertionError(f"Unexpected {value}")
                 elif self._mode == 'RECORDING':
                     logger.console(f"\nUnexpected {value} - updating expectations")
                     ExpectationResolver(value, expected).resolve()
-                    if not Validator().validate(value, expected):
+                    if not Validator(logger.console).validate(value, expected):
                         raise AssertionError(f"Unexpected {value}")
                     else:
                         logger.console(f"resolved expectations")
                 else:
                     raise AssertionError(f"Unexpected {value}")
+            logger.info(f"Value '{value}' matches expectations")
             if expected['id'] != expectation_id:
                 logger.debug(f"Expectation id mismatch. Expected '{expected['id']}' and was '{expectation_id}'. Updating expectation id.")
                 expected['id'] = expectation_id
@@ -129,6 +130,9 @@ def _is_jsonable(x:object) -> bool:
 
 
 class Validator:
+
+    def __init__(self, log:Callable[[str], None]) -> None:
+        self._log = log
 
     def validate(self, value:object, expected:Dict[str, object]) -> bool:
         isValid = True
@@ -148,44 +152,49 @@ class Validator:
 
     def _validate_value(self, value:object, expected:object) -> bool:
         if value != expected:
-            logger.console(f"[VALUE]: Validation failed. '{expected}' differs from '{value}'")
+            self._log(f"[VALUE]: Validation failed. '{expected}' differs from '{value}'")
             return False
+        self._log("Matches expected value")
         return True
 
     def _validate_startswith(self, value:object, expected_start:str) -> bool:
         if not isinstance(value, str):
-            logger.console(f"[TYPE]: Value '{value}' is not a string")
+            self._log(f"[TYPE]: Value '{value}' is not a string")
             return False
         if not value.startswith(expected_start):
-            logger.console(f"[STARTSWITH]: Value '{value}' does not start with '{expected_start}'")
+            self._log(f"[STARTSWITH]: Value '{value}' does not start with '{expected_start}'")
             return False
+        self._log("Matches startswith")
         return True
 
     def _validate_regex(self, value:object, expected:str) -> bool:
         if not isinstance(value, str):
-            logger.console(f"[TYPE]: Value '{value}' is not a string")
+            self._log(f"[TYPE]: Value '{value}' is not a string")
             return False
         if not re.compile(expected).match(value):
-            logger.console(f"[REGEX]: Value '{value}' does not match patter")
+            self._log(f"[REGEX]: Value '{value}' does not match patter")
             return False
+        self._log("Matches regex")
         return True
 
     def _validate_min(self, value:object, expected:float) -> bool:
         if not isinstance(value, Number):
-            logger.console(f"[TYPE]: Value '{value}' is not a number")
+            self._log(f"[TYPE]: Value '{value}' is not a number")
             return False
         if cast(float, value) < expected:
-            logger.console(f"[MIN]: Value {value} is smaller than expected")
+            self._log(f"[MIN]: Value {value} is smaller than expected")
             return False
+        self._log("Matches min constraint")
         return True
 
     def _validate_max(self, value:object, expected:float) -> bool:
         if not isinstance(value, Number):
-            logger.console(f"[TYPE]: Value '{value}' is not a number")
+            self._log(f"[TYPE]: Value '{value}' is not a number")
             return False
         if cast(float, value) > expected:
-            logger.console(f"[MAX]: Value {value} is bigger than expected")
+            self._log(f"[MAX]: Value {value} is bigger than expected")
             return False
+        self._log("Matches max constraint")
         return True
 
     def _validate_fields(self, value:object, fields:Dict[str, Dict[str, object]]) -> bool:
@@ -195,12 +204,14 @@ class Validator:
             if field in fields:
                 matchingFields.add(field)
                 if not self.validate(val, fields[field]):
-                    logger.console(f"[FIELD]: {field} has unexpected value")
+                    self._log(f"[FIELD]: {field} has unexpected value")
                     isValid = False
         missingFields = set(fields.keys()) - matchingFields
         if missingFields:
-            logger.console(f'[FIELD]: Missing expected fields [{", ".join(missingFields)}] in value')
+            self._log(f'[FIELD]: Missing expected fields [{", ".join(missingFields)}] in value')
             return False
+        if isValid:
+            self._log("Matching fields")
         return isValid
 
 
@@ -338,13 +349,13 @@ class NotMatchingValueInspector(_ValueInspector):
     def do_test(self, attrs) -> None:
         'Test if values match the constraints'
         logger.console(f"Expecting: {self._expected}")
-        if Validator().validate(self._value, self._expected):
+        if Validator(logger.console).validate(self._value, self._expected):
             logger.console("PASSED. New value matches constraints")
         else:
             logger.console("FAILED. New value did not match constraints")
         if not self._has_old_value:
             return
-        if Validator().validate(self._old_expected_value, self._expected):
+        if Validator(logger.console).validate(self._old_expected_value, self._expected):
             logger.console("PASSED. Old value matches constraints")
         else:
             logger.console("FAILED. Old value did not match constraints")
