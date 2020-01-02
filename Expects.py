@@ -15,10 +15,10 @@ class Expects:
     ROBOT_LISTENER_API_VERSION = 2
 
     def __init__(self, mode:str='NORMAL') -> None:
-        '''mode can be NORMAL, INTERACTIVE or AUTOMATIC
+        '''mode can be NORMAL, INTERACTIVE or RECORDING
         NORMAL = validate results against expectations
         INTERACTIVE = pause execution on validation failure and allow changes to validation criteria.
-        AUTOMATIC = store all values as expectations
+        RECORDING = store all values as expectations
         '''
         self.ROBOT_LIBRARY_LISTENER = self
         self.filename:str
@@ -96,7 +96,9 @@ class Expects:
         if expected is None:
             if self._mode == 'NORMAL':
                 raise AssertionError(f"Unexpected {value}")
-            ExpectationResolver(value, expectation_id, current_expectations).resolve()
+            expected = {'id':expectation_id}
+            current_expectations.append(expected)
+            ExpectationResolver(value, expected).resolve()
         else:
             logger.debug(f"Validating that value '{value}' matches expectation")
             if not Validator().validate(value, expected):
@@ -105,9 +107,9 @@ class Expects:
                     NotMatchingValueInspector(value, expectation_id, current_expectations).cmdloop()
                     if not Validator().validate(value, expected):
                         raise AssertionError(f"Unexpected {value}")
-                elif self._mode == 'AUTOMATIC':
+                elif self._mode == 'RECORDING':
                     logger.console(f"\nUnexpected {value} - updating expectations")
-                    ExpectationResolver(value, expectation_id, current_expectations).resolve()
+                    ExpectationResolver(value, expected).resolve()
                     if not Validator().validate(value, expected):
                         raise AssertionError(f"Unexpected {value}")
                     else:
@@ -354,14 +356,9 @@ class NotMatchingValueInspector(_ValueInspector):
 
 class ExpectationResolver:
 
-    def __init__(self, value:object, expectation_id:str, expectations:List[Dict[str, object]]) -> None:
+    def __init__(self, value:object, expected:Dict[str, object]) -> None:
         self._value = value
-        exps = [e for e in expectations if e["id"] == expectation_id]
-        if not exps:
-            self._expected:Dict[str, object] = {'id':expectation_id}
-            expectations.append(self._expected)
-        else:
-            self._expected = exps[0]
+        self._expected = expected
         self._has_old_value = 'value' in self._expected
         self._old_expected_value = self._expected.get('value')
         self._fields:List[Tuple[str, Dict[str, object]]] = []
@@ -370,6 +367,8 @@ class ExpectationResolver:
                 self._fields.append((field, {'value':val}))
 
     def resolve(self):
+        if self._has_old_value and self._old_expected_value == self._value:
+            return
         if isinstance(self._value, str):
             return self._resolve_str()
         if isinstance(self._value, Number):
@@ -383,14 +382,11 @@ class ExpectationResolver:
 
     def _resolve_str(self):
         if self._has_old_value:
-            matching_start = -1
-            for index, (i,j) in enumerate(zip(self._value, self._old_expected_value)):
-                if i == j:
-                    matching_start = index
-            if matching_start > -1:
+            nonamatch = [index for index, (i,j) in enumerate(zip(self._value, self._old_expected_value)) if i != j]
+            if nonamatch:
                 del self._expected['value']
-                self._expected['startswith'] = self._value[:matching_start+1]
-                logger.console(f"Resolved with startswith '{self._value[:matching_start+1]}'")
+                self._expected['startswith'] = self._value[:nonamatch[0]]
+                logger.console(f"Resolved with startswith '{self._value[:nonamatch[0]]}'")
                 return
         else:
             self._expected['value'] = self._value
@@ -415,6 +411,10 @@ class ExpectationResolver:
         if self._has_old_value:
             raise AssertionError(f"No startegy for complex object with already expected value")
         if 'fields' in self._expected:
-            raise AssertionError(f"No startegy for complex object with already expected value")
+            for field, val in self._fields:
+                if field in self._expected['fields']:
+                    ExpectationResolver(val['value'], self._expected['fields'][field]).resolve()
+            logger.console("Resolved by updating field expectations")
+            return
         self._expected['fields'] = dict(self._fields)
         logger.console("Resolved by expecting all fields")
