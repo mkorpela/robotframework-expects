@@ -7,6 +7,7 @@ import difflib
 from cmd import Cmd
 import sys
 from numbers import Number
+import substrings
 from robot.api import logger # type: ignore
 
 class Expects:
@@ -393,13 +394,13 @@ class ExpectationResolver:
 
     def _resolve_str(self):
         if self._has_old_value:
-            nonamatch = [index for index, (i,j) in enumerate(zip(self._value, self._old_expected_value)) if i != j]
-            if nonamatch and nonamatch[0] > 0:
+            parts = substrings.find_matching_parts(self._value, self._old_expected_value)
+            if parts != [] and parts != [""]:
                 del self._expected['value']
-                self._expected['startswith'] = self._value[:nonamatch[0]]
-                logger.console(f"Resolved with startswith '{self._value[:nonamatch[0]]}'")
+                self._expected['regex'] = substrings.regexpify(parts).pattern
+                logger.console(f"Resolved with regex")
                 return
-            raise AssertionError("Could not resolve with startswith")
+            raise AssertionError("Could not resolve with meaninful regex")
         else:
             self._expected['value'] = self._value
 
