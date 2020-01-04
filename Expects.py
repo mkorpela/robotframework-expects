@@ -398,9 +398,20 @@ class ExpectationResolver:
             if parts != [] and parts != [""]:
                 del self._expected['value']
                 self._expected['regex'] = substrings.regexpify(parts).pattern
+                self._expected['examples'] = [self._value, self._old_expected_value]
                 logger.console(f"Resolved with regex")
                 return
-            raise AssertionError("Could not resolve with meaninful regex")
+            raise AssertionError("Could not resolve with a meaninful regex")
+        elif 'regex' in self._expected and 'examples' in self._expected:
+            combined = substrings.find_matching_parts(self._value, self._expected['examples'][0])
+            for example in self._expected['examples'][1:]:
+                combined = substrings.combine(combined, example)
+            if combined != [] and combined != [""]:
+                self._expected['regex'] = substrings.regexpify(combined).pattern
+                self._expected['examples'].append(self._value)
+                logger.console(f"Resolved with regex")
+                return
+            raise AssertionError("Could not resolve with a meaninful regex")
         else:
             self._expected['value'] = self._value
 

@@ -1,5 +1,5 @@
 *** Settings ***
-Library  Expects.py
+Library  Expects.py  RECORDING
 Library  RequestsLibrary
 
 *** Test Cases ***
