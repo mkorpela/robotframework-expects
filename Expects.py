@@ -16,10 +16,10 @@ class Expects:
     ROBOT_LISTENER_API_VERSION = 2
 
     def __init__(self, mode:str='NORMAL') -> None:
-        '''mode can be NORMAL, INTERACTIVE or RECORDING
+        '''mode can be NORMAL, INTERACTIVE or TRAINING
         NORMAL = validate results against expectations
         INTERACTIVE = pause execution on validation failure and allow changes to validation criteria.
-        RECORDING = store all values as expectations
+        TRAINING = store all values as expectations
         '''
         self.ROBOT_LIBRARY_LISTENER = self
         self.filename:str
@@ -108,7 +108,7 @@ class Expects:
                     NotMatchingValueInspector(value, expectation_id, current_expectations).cmdloop()
                     if not Validator(logger.console).validate(value, expected):
                         raise AssertionError(f"Unexpected {value}")
-                elif self._mode == 'RECORDING':
+                elif self._mode == 'TRAINING':
                     logger.console(f"\nUnexpected {value} - updating expectations")
                     ExpectationResolver(value, expected).resolve()
                     if not Validator(logger.console).validate(value, expected):
