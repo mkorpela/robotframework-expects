@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 from typing import List, Optional, Dict, Mapping, Tuple, cast, Set, Callable
 import os
 import re
@@ -7,7 +8,7 @@ import difflib
 from cmd import Cmd
 import sys
 from numbers import Number
-import substrings
+from . import substrings
 from robot.api import logger # type: ignore
 
 class Expects:
