@@ -1,5 +1,5 @@
 *** Settings ***
-Library  expects.Expects  TRAINING
+Library  Expects  TRAINING
 Library  RequestsLibrary
 
 *** Test Cases ***
