@@ -2,7 +2,7 @@
 Robot Framework - Expects
 *************************
 
-*NOTE: This is currently an alpha version! Use with CURIOSITY and causing :D*
+*NOTE: This is currently an alpha version! Use with CURIOSITY and caution :D*
 
 Library to train computers to validate expected results based on examples. Make your testing smarter with applying machine learning!
 
