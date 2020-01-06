@@ -121,6 +121,8 @@ class Expects:
                     raise AssertionError(f"Unexpected {value}")
             logger.info(f"Value '{value}' matches expectations")
             if expected['id'] != expectation_id:
+                if expected.get('expectId', False):
+                    raise AssertionError(f"Unexpected actual id {expectation_id} != {expected['id']}")
                 logger.debug(f"Expectation id mismatch. Expected '{expected['id']}' and was '{expectation_id}'. Updating expectation id.")
                 expected['id'] = expectation_id
 
