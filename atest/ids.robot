@@ -6,7 +6,9 @@ First Test
    Should be as expected   First Test.0
    Should be as expected   First Test.1
    FOR    ${index}    IN RANGE    3
-      Should be as expected  First Test.2.${index}
+      Should be as expected  First Test.2.${index}.0
+      Log  hello
+      Should be as expected  First Test.2.${index}.2
    END
 
 Test 2

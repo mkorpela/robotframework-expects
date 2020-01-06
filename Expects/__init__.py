@@ -36,6 +36,7 @@ class Expects:
         self._position.append(name)
         self._current_test = name
         self._expectation_index = 0
+        self._row_index = 0
 
     def _end_test(self, name:str, attributes) -> None:
         self._position = self._position[:-1] if len(self._position) > 1 else [attributes["longname"][:-len(name)-1]]
