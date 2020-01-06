@@ -26,8 +26,8 @@ Improving expectations
 
 There are three ways to improve expectations:
 
-1. Run test multiple times in ``TRAINING`` mode to gain better validation model from multiple example runs.
-2. Run test in ``INTERACTIVE`` mode to stop execution on failing ``Should be as expected`` and exploring and making a better validation model.
+1. Run a test multiple times in ``TRAINING`` mode to gain better validation model from multiple example runs.
+2. Run a test in ``INTERACTIVE`` mode to stop execution on failing ``Should be as expected``. Then explore and make a better validation model.
 3. Modifying ``_expects.json`` by hand.
 
 When expectations change
