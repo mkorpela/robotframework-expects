@@ -2,11 +2,11 @@
   "Keywords": {
     "Keyword call": [
       {
-        "expectedId": "Keyword call.0",
+        "expectId": true,
         "id": "Keyword call.0"
       },
       {
-        "expectedId": "Keyword call.2",
+        "expectId": true,
         "id": "Keyword call.2"
       }
     ]
@@ -14,39 +14,39 @@
   "Tests": {
     "First Test": [
       {
-        "expectedId": "First Test.0",
+        "expectId": true,
         "id": "First Test.0"
       },
       {
-        "expectedId": "First Test.1",
+        "expectId": true,
         "id": "First Test.1"
       },
       {
-        "expectedId": "First Test.2.0",
+        "expectId": true,
         "id": "First Test.2.0.0"
       },
       {
-        "expectedId": "First Test.2.1",
+        "expectId": true,
         "id": "First Test.2.1.0"
       },
       {
-        "expectedId": "First Test.2.2",
+        "expectId": true,
         "id": "First Test.2.2.0"
       }
     ],
     "Test 2": [
       {
-        "expectedId": "Test 2.1",
+        "expectId": true,
         "id": "Test 2.1"
       },
       {
-        "expectedId": "SomeId",
+        "expectId": true,
         "id": "SomeId"
       }
     ],
     "Test 3": [
       {
-        "expectedId": "Test 3.0",
+        "expectId": true,
         "id": "Test 3.3"
       }
     ]

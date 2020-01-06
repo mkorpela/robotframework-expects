@@ -1,4 +1,4 @@
 #!/bin/sh
 set -e
 mypy .
-robot atest/
+PYTHONPATH=. robot atest/

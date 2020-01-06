@@ -150,7 +150,16 @@ class Validator:
             isValid &= self._validate_min(value, cast(float, expected['min']))
         if 'max' in expected:
             isValid &= self._validate_max(value, cast(float, expected['max']))
+        if expected.get('expectId', False):
+            isValid &= self._validate_id(value, cast(str, expected['id']))
         return isValid
+
+    def _validate_id(self, value:object, actualId:str) -> bool:
+        if value != actualId:
+            self._log(f"[ID]: Validation failed '{value}' was expected and actual was '{actualId}'")
+            return False
+        self._log(f"Id matches expected")
+        return True
 
     def _validate_value(self, value:object, expected:object) -> bool:
         if value != expected:
