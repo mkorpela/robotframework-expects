@@ -18,7 +18,7 @@ Test 2
   Should be as expected   first
   Keyword call   bar
   Should be as expected   third
-  Run Keyword And Expect Error  *  Keyword call   zoo
+  Keyword call   zoo
   Should be as expected   fifth
 
 Test 3

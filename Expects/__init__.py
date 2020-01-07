@@ -143,6 +143,8 @@ class Validator:
         isValid = True
         if 'value' in expected:
             isValid &= self._validate_value(value, expected['value'])
+        if 'anyof' in expected:
+            isValid &= self._validate_anyof(value, cast(List[object], expected['anyof']))
         if 'fields' in expected:
             isValid &= self._validate_fields(value, cast(Dict[str, Dict[str, object]], expected['fields']))
         if 'startswith' in expected:
@@ -169,6 +171,13 @@ class Validator:
             self._log(f"[VALUE]: Validation failed. '{expected}' differs from '{value}'")
             return False
         self._log("Matches expected value")
+        return True
+
+    def _validate_anyof(self, value:object, expected:List[object]) -> bool:
+        if value not in expected:
+            self._log(f"[ANYOF]: Validation failed. '{value}' not in '{expected}'")
+            return False
+        self._log("Matches anyof")
         return True
 
     def _validate_startswith(self, value:object, expected_start:str) -> bool:
@@ -392,18 +401,32 @@ class ExpectationResolver:
                 self._fields.append((field, {'value':val}))
 
     def resolve(self):
+        jsonable = _is_jsonable(self._value)
+        anyof = self._expected.get('anyof', [])
         if self._has_old_value and self._old_expected_value == self._value:
             return
+        if ('value' in self._expected or
+            ('anyof' in self._expected and (len(anyof) < 5 or
+            any(type(item) != type(self._value) for item in anyof)))) and jsonable:
+            return self._resolve_with_anyof()
         if isinstance(self._value, str):
             return self._resolve_str()
         if isinstance(self._value, Number):
             return self._resolve_number()
-        if _is_jsonable(self._value) and not self._has_old_value:
+        if jsonable and not self._has_old_value:
             self._expected['value'] = self._value
             return
-        if not _is_jsonable(self._value) and self._fields:
+        if not jsonable and self._fields:
             return self._resolve_complex_object()
         raise AssertionError(f"No strategy for type {type(self._value)}")
+
+    def _resolve_with_anyof(self):
+        if 'value' in self._expected:
+            del self._expected['value']
+            self._expected['anyof'] = [self._old_expected_value]
+        if self._value not in self._expected['anyof']:
+            self._expected['anyof'].append(self._value)
+        logger.console(f"Resolved with anyof")
 
     def _resolve_str(self):
         if self._has_old_value:
@@ -416,17 +439,24 @@ class ExpectationResolver:
                 return
             raise AssertionError("Could not resolve with a meaninful regex")
         elif 'regex' in self._expected and 'examples' in self._expected:
-            combined = substrings.find_matching_parts(self._value, self._expected['examples'][0])
-            for example in self._expected['examples'][1:]:
-                combined = substrings.combine(combined, example)
-            if combined != [] and combined != [""]:
-                self._expected['regex'] = substrings.regexpify(combined).pattern
-                self._expected['examples'].append(self._value)
-                logger.console(f"Resolved with regex")
-                return
-            raise AssertionError("Could not resolve with a meaninful regex")
+            return self._resolve_with_regex()
+        elif 'anyof' in self._expected:
+            self._expected['examples'] = self._expected['anyof']
+            del self._expected['anyof']
+            return self._resolve_with_regex()
         else:
             self._expected['value'] = self._value
+
+    def _resolve_with_regex(self):
+        combined = substrings.find_matching_parts(self._value, self._expected['examples'][0])
+        for example in self._expected['examples'][1:]:
+            combined = substrings.combine(combined, example)
+        if combined != [] and combined != [""]:
+            self._expected['regex'] = substrings.regexpify(combined).pattern
+            self._expected['examples'].append(self._value)
+            logger.console(f"Resolved with regex")
+            return
+        raise AssertionError("Could not resolve with a meaninful regex")
 
     def _resolve_number(self):
         assert 'value' not in self._expected or 'min' not in self._expected
@@ -434,6 +464,12 @@ class ExpectationResolver:
             del self._expected['value']
             self._expected['min'] = min(self._value, self._old_expected_value)
             self._expected['max'] = max(self._value, self._old_expected_value)
+            logger.console(f"Resolved with min {self._expected['min']} and max {self._expected['max']}")
+            return
+        if 'anyof' in self._expected:
+            self._expected['min'] = min(self._value, *self._expected['anyof'])
+            self._expected['max'] = max(self._value, *self._expected['anyof'])
+            del self._expected['anyof']
             logger.console(f"Resolved with min {self._expected['min']} and max {self._expected['max']}")
             return
         if 'min' in self._expected and 'max' in self._expected:
