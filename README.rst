@@ -4,7 +4,7 @@ Robot Framework - Expects
 
 *NOTE: This is currently an alpha version! Use with CURIOSITY and caution :D*
 
-Library to train computers to validate expected results based on examples. Validate something big and volatile with ease. Make your testing smarter with applying machine learning!
+Library to train computers to validate expected results based on examples. Validate something big and volatile with ease. Make your testing smarter with applying machine learning.
 
 This library exposes only one robot framework keyword: ``Should be as expected  ${VALUE}``.
 It checks expectations of what a ``${VALUE}`` should be against generated expectations json file.
