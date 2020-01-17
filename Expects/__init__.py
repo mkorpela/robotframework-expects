@@ -83,9 +83,10 @@ class Expects:
             return None
         return current_expectations[self._expectation_index-1]
 
-    def should_be_as_expected(self, value:object, id:Optional[str]=None) -> None:
+    def should_be_as_expected(self, value:object, id:Optional[str]=None, training:bool=False) -> None:
         expectation_id:str = id if id else self._position[-1]
-        if self._current_keyword == "UNKNOWN":
+        mode:str = 'TRAINING' if training else self._mode
+        if self._current_keyword == 'UNKNOWN':
             expectations = self.expectations["Tests"]
             if self._current_test not in expectations:
                 expectations[self._current_test] = []
@@ -93,11 +94,11 @@ class Expects:
             expectations = self.expectations["Keywords"]
             if self._current_keyword not in expectations:
                 expectations[self._current_keyword] = []
-        current_expectations = expectations[self._current_keyword if self._current_keyword != "UNKNOWN" else self._current_test]
+        current_expectations = expectations[self._current_keyword if self._current_keyword != 'UNKNOWN' else self._current_test]
         self._expectation_index += 1
         expected = self._find_expected(expectation_id, current_expectations)
         if expected is None:
-            if self._mode == 'NORMAL':
+            if mode == 'NORMAL':
                 raise AssertionError(f"Unexpected {value}")
             expected = {'id':expectation_id}
             current_expectations.append(expected)
@@ -105,12 +106,12 @@ class Expects:
         else:
             logger.debug(f"Validating that value '{value}' matches expectation")
             if not Validator(logger.info).validate(value, expected):
-                if self._mode == 'INTERACTIVE':
+                if mode == 'INTERACTIVE':
                     logger.console(f"\nExecution paused on row with id '{expectation_id}'")
                     NotMatchingValueInspector(value, expectation_id, current_expectations).cmdloop()
                     if not Validator(logger.console).validate(value, expected):
                         raise AssertionError(f"Unexpected {value}")
-                elif self._mode == 'TRAINING':
+                elif mode == 'TRAINING':
                     logger.console(f"\nUnexpected {value} - updating expectations")
                     ExpectationResolver(value, expected).resolve()
                     if not Validator(logger.console).validate(value, expected):
