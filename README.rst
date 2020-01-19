@@ -10,6 +10,10 @@ This library exposes only one robot framework keyword: ``Should be as expected  
 It checks expectations of what a ``${VALUE}`` should be against generated expectations json file.
 Expectation file is in human readable format and can be edited manually. System will generate expectations automatically.
 
+``Should be as expected  value  id=<str>  training=<boolean>``
+If you define an id, then the system more easily detects the same expectation when your test structure changes. Otherwise it uses a generated id and this breaks very easily.
+Training can be set on library level, but individual expectations can be trained with the training flag without training all expectations.
+
 How to use this:
 ================
 
